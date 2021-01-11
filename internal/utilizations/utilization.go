@@ -71,12 +71,24 @@ type InfluxDBCPUUA struct{
 }
 
 // NewInfluxDBCPUUA returns a new InfluxDBCPUUA
-func NewInfluxDBCPUUA(url, token, organization, bucket string) *InfluxDBCPUUA{
+func NewInfluxDBCPUUA(url, token, organization, bucket string) (*InfluxDBCPUUA, error){
+	if len(strings.Trim(url, " ")) == 0{
+		return nil, errors.Errorf("the argument %s cant be empty string", "url")
+	}
+	if len(strings.Trim(token, " ")) == 0{
+		return nil, errors.Errorf("the argument %s cant be empty string", "token")
+	}
+	if len(strings.Trim(organization, " ")) == 0{
+		return nil, errors.Errorf("the argument %s cant be empty string", "organization")
+	}
+	if len(strings.Trim(bucket, " ")) == 0{
+		return nil, errors.Errorf("the argument %s cant be empty string", "bucket")
+	}
 	ctx, cnF := context.WithCancel(context.Background())
 	i := &InfluxDBCPUUA{ctx: ctx, cnF: cnF, org: organization, bucket: bucket}
 	i.qAPI = dataaccess.GetNewClientAndQueryAPI(url, token, organization)
 
-	return i
+	return i, nil
 }
 
 // GetCPUUtilizations ....
