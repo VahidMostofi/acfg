@@ -22,14 +22,17 @@ type UsageAggregator struct{
 // for influxdb, it uses the url, token, org and bucket provided in config
 func NewUsageAggregator(kind string)(*UsageAggregator, error){
 	u := &UsageAggregator{}
-
+	var err error
 	if kind == "influxdb"{
-		u.cpuUsageAggregator = utilizations.NewInfluxDBCPUUA(
+		u.cpuUsageAggregator,err = utilizations.NewInfluxDBCPUUA(
 			viper.GetString(constants.CONFIG_INFLUXDB_URL),
 			viper.GetString(constants.CONFIG_INFLUXDB_TOKEN),
 			viper.GetString(constants.CONFIG_INFLUXDB_ORG),
 			viper.GetString(constants.CONFIG_INFLUXDB_BUCKET))
 
+		if err != nil{
+			return nil, errors.Wrap(err, "cant create InfluxDBCPUUA")
+		}
 
 		temp := viper.Get(constants.CONFIG_RESOURCE_FILTERS)
 		tempConverted, ok := temp.(map[string]map[string]interface{})

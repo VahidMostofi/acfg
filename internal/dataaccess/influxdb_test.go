@@ -1,16 +1,12 @@
 package dataaccess
 
 import (
-	"context"
-	"fmt"
-	"os"
 	"testing"
-	"time"
 )
 
 func TestQuery(t *testing.T) {
-	fmt.Println(time.Now().Unix())
-	qAPi := GetNewClientAndQueryAPI(os.Getenv("INFLUXDB_URL"), os.Getenv("INFLUXDB_TOKEN"), os.Getenv("INFLUXDB_ORG"))
+	//fmt.Println(time.Now().Unix())
+	//qAPi := GetNewClientAndQueryAPI(os.Getenv("INFLUXDB_URL"), os.Getenv("INFLUXDB_TOKEN"), os.Getenv("INFLUXDB_ORG"))
 //	q1 := `
 //data_total = from(bucket: "general")
 //  |> range(start: -2m, stop: 0m)
@@ -41,23 +37,23 @@ func TestQuery(t *testing.T) {
 //joined
 //`
 
-	times, values ,err := QuerySingleTable(qAPi, context.Background(), q1, "_value")
-	if err != nil{
-		t.Log(err)
-		t.Fail()
-	}
-
-	minTime := times[0]
-	maxTime := times[0]
-
-	for _, time := range times{
-		if time.UnixNano() < minTime.UnixNano(){
-			minTime = time
-		}
-		if time.UnixNano() > maxTime.UnixNano(){
-			maxTime = time
-		}
-	}
-
-	fmt.Println(maxTime.Unix() - minTime.Unix(), len(values))
+	//times, values ,err := QuerySingleTable(qAPi, context.Background(), q1, "_value")
+	//if err != nil{
+	//	t.Log(err)
+	//	t.Fail()
+	//}
+	//
+	//minTime := times[0]
+	//maxTime := times[0]
+	//
+	//for _, time := range times{
+	//	if time.UnixNano() < minTime.UnixNano(){
+	//		minTime = time
+	//	}
+	//	if time.UnixNano() > maxTime.UnixNano(){
+	//		maxTime = time
+	//	}
+	//}
+	//
+	//fmt.Println(maxTime.Unix() - minTime.Unix(), len(values))
 }
