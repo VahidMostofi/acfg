@@ -60,6 +60,11 @@ func (rts *ResponseTimes) GetPercentile(p float64) (float64, error) {
 	return p, nil
 }
 
+// GetCount returns the number of response times
+func (rts *ResponseTimes) GetCount() int {
+	return len([]float64(*rts))
+}
+
 // InfluxDBRTA gets response times from influxdb
 type InfluxDBRTA struct{
 	qAPI api.QueryAPI
@@ -108,14 +113,14 @@ from(bucket: "$BUCKET_NAME")
 		if conditions == ""{
 			conditions = " and "
 		}
-		conditions += "r.method == \"\"" + httpMethod.(string) + "\"\""
+		conditions += "r.method == \"\\\"" + httpMethod.(string) + "\\\"\""
 	}
 	if uriRegex, ok := filters["URI_REGEX"]; ok{
-		conditions += " and r.uri =~ /" + uriRegex.(string) + "*/"
+		conditions += " and r.uri =~ /" + uriRegex.(string) + "/"
 	}
 	query = strings.Replace(query, "$CONDITIONS", conditions, -1)
 
-	log.Info("getting response times from influxdb with query:\n" + query)
+	log.Debug("getting response times from influxdb with query:\n" + query)
 
 	_, values, err := dataaccess.QuerySingleTable(i.qAPI, i.ctx, query, "_value")
 	if err != nil{

@@ -6,3 +6,4 @@ const CONFIG_INFLUXDB_BUCKET = "CONFIG_INFLUXDB_BUCKET"
 const CONFIG_INFLUXDB_ORG = "CONFIG_INFLUXDB_ORG"
 
 const CONFIG_RESOURCE_FILTERS = "CONFIG_RESOURCE_FILTERS" // needs to be map[string]map[string]interface{}
+const CONFIG_ENDPOINTS_FILTERS = "CONFIG_ENDPOINTS_FILTERS" // needs to be map[string]map[string]interface{}
