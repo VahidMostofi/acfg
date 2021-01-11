@@ -6,7 +6,7 @@ import (
 	"github.com/montanaflynn/stats"
 	"github.com/pkg/errors"
 	"github.com/vahidmostofi/acfg/internal/dataaccess"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"strconv"
 	"strings"
 )
@@ -16,6 +16,7 @@ import (
 // if startTime is less than 0, it should be replaced with 0; time.Unix()
 // if finishTime is less than 0, it should be replaced with current time time.Unix()
 // if filters is null, there operation should be done without any filtering.
+// available filters: HTTP_METHOD, URI_REGEX
 type ResponseTimeAggregator interface {
 	GetResponseTimes(startTime, finishTime int64, filters map[string]interface{}) (*ResponseTimes, error)
 }
@@ -68,6 +69,7 @@ type InfluxDBRTA struct{
 	bucket string
 }
 
+// NewInfluxDBRTA returns a new InfluxDBRTA
 func NewInfluxDBRTA(url, token, organization, bucket string) *InfluxDBRTA{
 	ctx, cnF := context.WithCancel(context.Background())
 	i := &InfluxDBRTA{ctx: ctx, cnF: cnF, org: organization, bucket: bucket}
@@ -76,6 +78,7 @@ func NewInfluxDBRTA(url, token, organization, bucket string) *InfluxDBRTA{
 	return i
 }
 
+// GetResponseTimes ....
 func (i *InfluxDBRTA) GetResponseTimes(startTime, finishTime int64, filters map[string]interface{})  (*ResponseTimes, error){
 	query := `
 from(bucket: "$BUCKET_NAME")
@@ -100,7 +103,7 @@ from(bucket: "$BUCKET_NAME")
 	}
 	query = strings.Replace(query, "$CONDITIONS", conditions, -1)
 
-	log.Println("getting response times from influxdb with query:\n" + query)
+	log.Info("getting response times from influxdb with query:\n" + query)
 
 	_, values, err := dataaccess.QuerySingleTable(i.qAPI, i.ctx, query, "_value")
 	if err != nil{
