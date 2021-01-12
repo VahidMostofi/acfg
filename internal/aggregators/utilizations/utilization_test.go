@@ -2,8 +2,8 @@ package utilizations
 
 import (
 	"fmt"
-	"testing"
 	"os"
+	"testing"
 	"time"
 )
 

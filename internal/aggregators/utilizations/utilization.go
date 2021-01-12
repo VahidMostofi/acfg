@@ -1,14 +1,14 @@
 package utilizations
 
 import (
+	"context"
 	"github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/montanaflynn/stats"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"github.com/vahidmostofi/acfg/internal/dataaccess"
 	"strconv"
-	"context"
 	"strings"
-	log "github.com/sirupsen/logrus"
 )
 
 // CPUUtilizationAggregator uses some functionality to gather CPU utilization values based on some functionality

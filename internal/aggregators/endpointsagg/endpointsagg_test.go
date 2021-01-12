@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/spf13/viper"
 	"github.com/vahidmostofi/acfg/internal/constants"
+	"os"
 	"testing"
 	"time"
-	"os"
 )
 
 func TestEndpointsAggregator_GetEndpointsResponseTimes(t *testing.T) {

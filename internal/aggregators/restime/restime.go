@@ -5,8 +5,8 @@ import (
 	"github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/montanaflynn/stats"
 	"github.com/pkg/errors"
-	"github.com/vahidmostofi/acfg/internal/dataaccess"
 	log "github.com/sirupsen/logrus"
+	"github.com/vahidmostofi/acfg/internal/dataaccess"
 	"strconv"
 	"strings"
 )
