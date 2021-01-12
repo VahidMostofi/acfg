@@ -3,8 +3,8 @@ package endpointsagg
 import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+	"github.com/vahidmostofi/acfg/internal/aggregators/restime"
 	"github.com/vahidmostofi/acfg/internal/constants"
-	"github.com/vahidmostofi/acfg/internal/restime"
 )
 
 type Endpoint struct {
@@ -13,7 +13,7 @@ type Endpoint struct {
 
 type EndpointsAggregator struct{
 	responseTimeAggregator restime.ResponseTimeAggregator
-	endpointFilters map[string]map[string]interface{}
+	endpointFilters        map[string]map[string]interface{}
 }
 
 // NewEndpointsAggregator ...
@@ -48,7 +48,7 @@ func NewEndpointsAggregator(kind string)(*EndpointsAggregator, error){
 	return u, nil
 }
 
-func (e *EndpointsAggregator) GetListOfEndpointsBeingTracked() []*Endpoint{
+func (e *EndpointsAggregator) GetListOfEndpointsBeingTracked() []*Endpoint {
 	endpoints := make([]*Endpoint,0)
 	for resourceName := range e.endpointFilters{
 		endpoints = append(endpoints, &Endpoint{resourceName})

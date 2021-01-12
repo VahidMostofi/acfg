@@ -3,8 +3,8 @@ package ussageagg
 import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+	"github.com/vahidmostofi/acfg/internal/aggregators/utilizations"
 	"github.com/vahidmostofi/acfg/internal/constants"
-	"github.com/vahidmostofi/acfg/internal/utilizations"
 )
 
 type Resource struct{
@@ -13,7 +13,7 @@ type Resource struct{
 
 type UsageAggregator struct{
 	cpuUsageAggregator utilizations.CPUUtilizationAggregator
-	resourceFilters map[string]map[string]interface{}
+	resourceFilters    map[string]map[string]interface{}
 }
 
 // NewUsageAggregator ...
@@ -48,7 +48,7 @@ func NewUsageAggregator(kind string)(*UsageAggregator, error){
 	return u, nil
 }
 
-func (u *UsageAggregator) GetListOfResourcesBeingTracked() []*Resource{
+func (u *UsageAggregator) GetListOfResourcesBeingTracked() []*Resource {
 	resources := make([]*Resource,0)
 	for resourceName := range u.resourceFilters{
 		resources = append(resources, &Resource{resourceName})
