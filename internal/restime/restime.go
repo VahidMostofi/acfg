@@ -97,6 +97,9 @@ func NewInfluxDBRTA(url, token, organization, bucket string) (*InfluxDBRTA,error
 
 // GetResponseTimes ....
 func (i *InfluxDBRTA) GetResponseTimes(startTime, finishTime int64, filters map[string]interface{})  (*ResponseTimes, error){
+	if startTime >= finishTime {
+		return nil, errors.Errorf("for getting GetCPUUtilizations(), startTime must be less than finishTime")
+	}
 	query := `
 from(bucket: "$BUCKET_NAME")
   |> range(start: $START_TIME, stop: $FINISH_TIME)
