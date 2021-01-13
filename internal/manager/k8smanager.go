@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"io"
+	"io/ioutil"
 	v1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	v12 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	"k8s.io/client-go/util/retry"
 	"sync"
@@ -21,6 +24,31 @@ type Manager interface{}
 type K8sManager struct{
 	clientSet *kubernetes.Clientset
 	namespace string
+}
+
+func (k *K8sManager) Deploy(ctx context.Context, reader io.Reader) error{
+
+	b, err := ioutil.ReadAll(reader)
+	if err != nil{
+		return errors.Wrap(err, "error while reading the reader")
+	}
+
+	obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(b, nil, nil)
+	if err != nil{
+		return errors.Wrap(err, "error while decoding using UniversalSerializer")
+	}
+
+	switch o := obj.DeepCopyObject().(type) {
+	case *v1.Deployment:
+		ptr := obj.DeepCopyObject().(*v1.Deployment)
+		_, err = k.clientSet.AppsV1().Deployments(k.namespace).Create(ctx, ptr, metav1.CreateOptions{})
+		if err != nil{
+			return errors.Wrapf(err, "error while creating Deployment %s", ptr.Name)
+		}
+	default:
+		return errors.Errorf("unknown object: %v", o)
+	}
+	return nil
 }
 
 func (k *K8sManager) UpdateConfigurationsAndWait(ctx context.Context) error{
@@ -53,7 +81,7 @@ func (k *K8sManager) updateDeployment(ctx context.Context, targetDeployment *v1.
 		afterBytes, _ := returned.Marshal()
 
 		isChanged := bytes.Compare(afterBytes,beforeBytes) != 0
-		log.Debugf("updateDeployment() comparing before and after for deployment %s: %s", targetDeployment.Name, isChanged)
+		log.Debugf("updateDeployment() comparing before and after for deployment %s: %t", targetDeployment.Name, isChanged)
 		if isChanged{
 			waitDeploymentHaveDesiredCondition(ctx, deploymentsClient, "ReplicaSetUpdated", targetDeployment.Name,nil,10 * time.Second) //TODO 10 second is hard coded
 		}
