@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	v12 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
 	"sync"
 	"time"
@@ -24,6 +25,39 @@ type Manager interface{}
 type K8sManager struct{
 	clientSet *kubernetes.Clientset
 	namespace string
+	deploymentsNames []string
+}
+
+func NewK8Manager(namespace string, deploymentNames []string) (*K8sManager, error){
+	kubeconfig := "/home/vahid/.kube/config"
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil{
+		panic(err)
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil{
+		panic(err)
+	}
+
+	k := &K8sManager{
+		namespace: namespace,
+		deploymentsNames: deploymentNames,
+		clientSet: clientset,
+	}
+
+	return k, nil
+}
+
+func (k *K8sManager) WaitAllDeploymentsAreStable(ctx context.Context){
+	log.Debug("WaitAllDeploymentsAreStable() waiting for all deployments to be available.")
+	deploymentsClient := k.clientSet.AppsV1().Deployments(k.namespace)
+	wg := &sync.WaitGroup{}
+	for _, deploymentName := range k.deploymentsNames{
+		wg.Add(1)
+		waitDeploymentHaveDesiredCondition(ctx, deploymentsClient,"NewReplicaSetAvailable", deploymentName,wg, 10)
+	}
+	wg.Wait()
+	log.Debug("WaitAllDeploymentsAreStable() all deployments to be available.")
 }
 
 func (k *K8sManager) Deploy(ctx context.Context, reader io.Reader) error{
