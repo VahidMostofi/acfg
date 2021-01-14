@@ -7,5 +7,6 @@ import (
 
 type AutoConfigurationAgent interface{
 	GetName() string
-	GetInitialConfiguration(workload *workload.Workload) (*autocfg.Configuration, error)
+	GetInitialConfiguration(workload *workload.Workload) (map[string]*autocfg.Configuration, error)
+	ConfigureNextStep(workload *workload.Workload) (map[string]*autocfg.Configuration, bool, error)
 }
