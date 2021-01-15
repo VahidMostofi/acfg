@@ -7,9 +7,11 @@ import (
 	"github.com/vahidmostofi/acfg/internal/workload"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 const containerName = "kkkk6localautoconfig"
@@ -51,30 +53,57 @@ func (k *K6LocalLoadGenerator) Start(workload *workload.Workload, reader io.Read
 		return errors.Wrapf(err, "error while chaning permission of temp file %s", file.Name())
 	}
 
-	removeCmd := exec.Command("docker", "container", "remove", containerName)
+	removeCmd := exec.Command("docker", "container", "rm", "-f", containerName)
+	fmt.Println(removeCmd.String())
 	err  = removeCmd.Run()
 
 	if err != nil{
-		log.Warnf("error while removing k6 load generator container before running it %v", err)
+		log.Warnf("K6LocalLoadGenerator: error while removing k6 load generator container before running it %v", err)
 	}
-	fmt.Println(removeCmd.CombinedOutput())
+	b, _ := removeCmd.CombinedOutput()
 
-	cmd := exec.Command("docker", "run", "--network", "host", "--rm", "--name", containerName, "-v", file.Name() + ":" + "/script.js", "loadimpact/k6",  "run", "/script.js")
-	fmt.Println(cmd.String())
+	log.Warn("K6LocalLoadGenerator: " + string(b))
+
+	cmd := exec.Command("docker", "run", "--network", "host","-d", "--rm", "--name", containerName, "-v", file.Name() + ":" + "/script.js", "loadimpact/k6",  "run", "/script.js")
+	log.Warn("K6LocalLoadGenerator: ",cmd.String())
 	err = cmd.Run()
 	if err != nil{
 		out, _ := cmd.CombinedOutput()
-		log.Debugf("Failed %s",string(out))
+		log.Debugf("K6LocalLoadGenerator: Failed %s",string(out))
 		return errors.Wrapf(err, "error while starting load generator %s", string(out))
 	}
 	out, _ := cmd.CombinedOutput()
-	log.Debugf("Failed %s",string(out))
-
+	log.Debugf("K6LocalLoadGenerator: Failed %s",string(out))
+	for{
+		url := "http://localhost:6565/v1/status"
+		resp, err := http.Get(url)
+		if err != nil{
+			continue
+		}
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil{
+			panic(err)
+		}
+		if strings.Contains(string(b), "\"running\":true"){
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
 
 	return nil
 }
 
 func (k *K6LocalLoadGenerator) Stop() error {
+	log.Debug("K6LocalLoadGenerator: Stopping load generator.")
+	removeCmd := exec.Command("docker", "container", "rm", "-f", containerName)
+	err := removeCmd.Run()
+
+	if err != nil{
+		log.Warnf("K6LocalLoadGenerator: error while removing k6 load generator container for stopping %v", err)
+	}
+	b, _ := removeCmd.CombinedOutput()
+
+	log.Warn("K6LocalLoadGenerator: " + string(b))
 	return nil
 }
 
