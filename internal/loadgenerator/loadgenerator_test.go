@@ -19,5 +19,11 @@ func TestK6LocalLoadGenerator_Start(t *testing.T) {
 		t.Fail()
 		return
 	}
-	time.Sleep(140)
+	time.Sleep(20 * time.Second)
+	err = k.Stop()
+	if err != nil{
+		panic(err)
+		t.Fail()
+		return
+	}
 }
