@@ -19,6 +19,21 @@ type Configuration struct{
 	EnvironmentValues map[string]string
 }
 
+func (c *Configuration) DeepCopy() *Configuration{
+	c2 := &Configuration{
+		ResourceType: c.ResourceType,
+		ReplicaCount: c.ReplicaCount,
+		CPU: c.CPU,
+		Memory: c.Memory,
+		EnvironmentValues: make(map[string]string),
+	}
+	for key,value := range c.EnvironmentValues{
+		c2.EnvironmentValues[key] = value
+	}
+
+	return c
+}
+
 func GetHash(c map[string]*Configuration, version string) (string,error){
 	b, err := json.Marshal(c)
 	if err != nil{
@@ -50,4 +65,15 @@ type TestInformation struct{
 	AutoconfiguringApproach string 			`yaml:"autoConfigApproach"`
 	Iterations []*IterationInformation 		`yaml:"iterations"`
 	InputWorkload *workload.Workload 		`yaml:"workload"`
+}
+
+type SLA struct{
+	Conditions []Condition
+}
+
+type Condition struct{
+	Type string
+	EndpointName string
+	Threshold float64
+	ComputeFn func([]float64) float64
 }
