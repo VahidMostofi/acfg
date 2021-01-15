@@ -2,16 +2,12 @@ package dataaccess
 
 import (
 	"bytes"
-	"context"
 	"github.com/pkg/errors"
 	"github.com/vahidmostofi/acfg/internal/autocfg"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"gopkg.in/yaml.v2"
-	"net/http"
-	"os"
 )
 
 type ConfigDatabase interface{
@@ -19,6 +15,8 @@ type ConfigDatabase interface{
 	Retrieve(code string) (*autocfg.AggregatedData, error) // if there is no config with this hash returns nil,false
 }
 
+
+// TODO make this more general, it should work with []byte and string
 type AWSConfigurationDatabase struct{
 	session *session.Session
 	bucket string
