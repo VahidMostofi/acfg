@@ -2,9 +2,7 @@ package endpointsagg
 
 import (
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 	"github.com/vahidmostofi/acfg/internal/aggregators/restime"
-	"github.com/vahidmostofi/acfg/internal/constants"
 )
 
 type Endpoint struct {
@@ -19,27 +17,23 @@ type EndpointsAggregator struct{
 // NewEndpointsAggregator ...
 // uses endpoint filters to select which endpoints' response times to gather. Current filters: HTTP_METHOD, URI_REGEX
 // available kinds: influxdb
-// for influxdb, it uses the url, token, org and bucket provided in config
-func NewEndpointsAggregator(kind string)(*EndpointsAggregator, error){
+// for influxdb, it uses the url, token, organization and bucket pass them in args which is map[string]interface{}
+func NewEndpointsAggregator(kind string, args map[string]interface{}, endpointFilters map[string]map[string]interface{})(*EndpointsAggregator, error){
 	u := &EndpointsAggregator{}
 	var err error
 	if kind == "influxdb"{
 		u.responseTimeAggregator, err = restime.NewInfluxDBRTA(
-			viper.GetString(constants.CONFIG_INFLUXDB_URL),
-			viper.GetString(constants.CONFIG_INFLUXDB_TOKEN),
-			viper.GetString(constants.CONFIG_INFLUXDB_ORG),
-			viper.GetString(constants.CONFIG_INFLUXDB_BUCKET))
+			args["url"].(string),
+			args["token"].(string),
+			args["organization"].(string),
+			args["bucket"].(string),
+		)
 
 		if err != nil{
 			return nil, errors.Wrap(err, "cant create InfluxDBRTA")
 		}
 
-		temp := viper.Get(constants.CONFIG_ENDPOINTS_FILTERS)
-		tempConverted, ok := temp.(map[string]map[string]interface{})
-		if !ok {
-			return nil, errors.Errorf("cant find endpoints filters in configs using: %s with type map[string]map[string]interface{}", constants.CONFIG_ENDPOINTS_FILTERS)
-		}
-		u.endpointFilters = tempConverted
+		u.endpointFilters = endpointFilters
 
 	}else{
 		return nil, errors.Errorf("unknown kind: %s", kind)

@@ -20,7 +20,7 @@ type UsageAggregator struct{
 // uses resource filters to select which pods CPU usage to consider and compute. Current filters: POD_NAME_REGEX
 // available kinds: influxdb
 // for influxdb, it uses the url, token, org and bucket provided in config
-func NewUsageAggregator(kind string)(*UsageAggregator, error){
+func NewUsageAggregator(kind string, args map[string]interface{}, resourceFilters map[string]map[string]interface{})(*UsageAggregator, error){
 	u := &UsageAggregator{}
 	var err error
 	if kind == "influxdb"{
@@ -34,12 +34,7 @@ func NewUsageAggregator(kind string)(*UsageAggregator, error){
 			return nil, errors.Wrap(err, "cant create InfluxDBCPUUA")
 		}
 
-		temp := viper.Get(constants.CONFIG_RESOURCE_FILTERS)
-		tempConverted, ok := temp.(map[string]map[string]interface{})
-		if !ok {
-			return nil, errors.Errorf("cant find resource filters in configs using: %s with type map[string]map[string]interface{}", constants.CONFIG_RESOURCE_FILTERS)
-		}
-		u.resourceFilters = tempConverted
+		u.resourceFilters = resourceFilters
 
 	}else{
 		return nil, errors.Errorf("unknown kind: %s", kind)
