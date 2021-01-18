@@ -12,7 +12,7 @@ import (
 	"github.com/vahidmostofi/acfg/internal/autocfg/autoconfigurer"
 	"github.com/vahidmostofi/acfg/internal/constants"
 	"github.com/vahidmostofi/acfg/internal/dataaccess"
-	"github.com/vahidmostofi/acfg/internal/manager"
+	"github.com/vahidmostofi/acfg/internal/clustermanager"
 	"github.com/vahidmostofi/acfg/internal/workload"
 	"gopkg.in/yaml.v2"
 	"os"
@@ -30,7 +30,7 @@ type ConfigurationValidation struct{
 }
 
 type AutoConfigManager struct{
-	clusterManager *manager.K8sManager
+	clusterManager clustermanager.ClusterManager
 	configurationValidation ConfigurationValidation
 	usingHash bool
 	configDatabase dataaccess.ConfigDatabase
@@ -60,9 +60,9 @@ type AutoConfigManagerArgs struct{
 }
 
 func NewAutoConfigManager(args *AutoConfigManagerArgs) (*AutoConfigManager,error){
-	c, err := manager.NewK8Manager(args.Namespace, args.DeploymentsToManage)
+	c, err := clustermanager.NewK8ClusterManager(args.Namespace, args.DeploymentsToManage)
 	if err != nil{
-		return nil, errors.Wrap(err, "error while creating kubernetes cluster manager.")
+		return nil, errors.Wrap(err, "error while creating kubernetes cluster clustermanager.")
 	}
 
 	a := &AutoConfigManager{

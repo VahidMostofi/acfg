@@ -1,4 +1,4 @@
-package manager
+package clustermanager
 
 import (
 	"bytes"
@@ -23,15 +23,13 @@ import (
 	"time"
 )
 
-type Manager interface{}
-
-type K8sManager struct{
+type K8s struct{
 	clientSet *kubernetes.Clientset
 	namespace string
 	deploymentsNames []string
 }
 
-func NewK8Manager(namespace string, deploymentNames []string) (*K8sManager, error){
+func NewK8ClusterManager(namespace string, deploymentNames []string) (ClusterManager, error){
 	kubeconfig := "/home/vahid/.kube/config"
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil{
@@ -42,7 +40,7 @@ func NewK8Manager(namespace string, deploymentNames []string) (*K8sManager, erro
 		panic(err)
 	}
 
-	k := &K8sManager{
+	k := &K8s{
 		namespace: namespace,
 		deploymentsNames: deploymentNames,
 		clientSet: clientset,
@@ -51,7 +49,7 @@ func NewK8Manager(namespace string, deploymentNames []string) (*K8sManager, erro
 	return k, nil
 }
 
-func (k *K8sManager) WaitAllDeploymentsAreStable(ctx context.Context){
+func (k *K8s) WaitAllDeploymentsAreStable(ctx context.Context){
 	log.Debug("WaitAllDeploymentsAreStable() waiting for all deployments to be available.")
 	deploymentsClient := k.clientSet.AppsV1().Deployments(k.namespace)
 	wg := &sync.WaitGroup{}
@@ -63,7 +61,7 @@ func (k *K8sManager) WaitAllDeploymentsAreStable(ctx context.Context){
 	log.Debug("WaitAllDeploymentsAreStable() all deployments to be available.")
 }
 
-func (k *K8sManager) Deploy(ctx context.Context, reader io.Reader) error{
+func (k *K8s) Deploy(ctx context.Context, reader io.Reader) error{
 
 	b, err := ioutil.ReadAll(reader)
 	if err != nil{
@@ -88,7 +86,7 @@ func (k *K8sManager) Deploy(ctx context.Context, reader io.Reader) error{
 	return nil
 }
 
-func (k *K8sManager) UpdateConfigurationsAndWait(ctx context.Context, config map[string]*autocfg.Configuration) error{
+func (k *K8s) UpdateConfigurationsAndWait(ctx context.Context, config map[string]*autocfg.Configuration) error{
 
 	wg := &sync.WaitGroup{}
 
@@ -132,7 +130,7 @@ func (k *K8sManager) UpdateConfigurationsAndWait(ctx context.Context, config map
 	return nil
 }
 
-func (k *K8sManager) updateDeployment(ctx context.Context, targetDeployment *v1.Deployment) error {
+func (k *K8s) updateDeployment(ctx context.Context, targetDeployment *v1.Deployment) error {
 	log.Debug("updateDeployment() updating deployment", targetDeployment.Name)
 	deploymentsClient := k.clientSet.AppsV1().Deployments(k.namespace)
 
