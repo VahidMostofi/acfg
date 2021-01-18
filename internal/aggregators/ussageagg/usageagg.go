@@ -25,10 +25,10 @@ func NewUsageAggregator(kind string, args map[string]interface{}, resourceFilter
 	var err error
 	if kind == "influxdb"{
 		u.cpuUsageAggregator,err = utilizations.NewInfluxDBCPUUA(
-			viper.GetString(constants.CONFIG_INFLUXDB_URL),
-			viper.GetString(constants.CONFIG_INFLUXDB_TOKEN),
-			viper.GetString(constants.CONFIG_INFLUXDB_ORG),
-			viper.GetString(constants.CONFIG_INFLUXDB_BUCKET))
+			viper.GetString(constants.EndpointsAggregatorArgsURL),
+			viper.GetString(constants.EndpointsAggregatorArgsToken),
+			viper.GetString(constants.EndpointsAggregatorArgsOrganization),
+			viper.GetString(constants.EndpointsAggregatorArgsBucket))
 
 		if err != nil{
 			return nil, errors.Wrap(err, "cant create InfluxDBCPUUA")

@@ -10,17 +10,17 @@ import (
 )
 
 func TestEndpointsAggregator_GetEndpointsResponseTimes(t *testing.T) {
-	viper.Set(constants.CONFIG_INFLUXDB_URL, os.Getenv("INFLUXDB_URL"))
-	viper.Set(constants.CONFIG_INFLUXDB_TOKEN, os.Getenv("INFLUXDB_TOKEN"))
-	viper.Set(constants.CONFIG_INFLUXDB_ORG, os.Getenv("INFLUXDB_ORG"))
-	viper.Set(constants.CONFIG_INFLUXDB_BUCKET, os.Getenv("INFLUXDB_BUCKET"))
+	viper.Set(constants.EndpointsAggregatorArgsURL, os.Getenv("INFLUXDB_URL"))
+	viper.Set(constants.EndpointsAggregatorArgsToken, os.Getenv("INFLUXDB_TOKEN"))
+	viper.Set(constants.EndpointsAggregatorArgsOrganization, os.Getenv("INFLUXDB_ORG"))
+	viper.Set(constants.EndpointsAggregatorArgsBucket, os.Getenv("INFLUXDB_BUCKET"))
 
 	resourceFilters := map[string]map[string]interface{}{
 		"login": {"URI_REGEX":"login*", "HTTP_METHOD":"POST"},
 		"get-book": {"URI_REGEX":"books*", "HTTP_METHOD":"GET"},
 		"edit-book": {"URI_REGEX":"books*", "HTTP_METHOD":"PUT"},
 	}
-	viper.Set(constants.CONFIG_ENDPOINTS_FILTERS, resourceFilters)
+	viper.Set(constants.EndpointsFilters, resourceFilters)
 	ea,err := NewEndpointsAggregator("influxdb")
 	if err != nil{
 		t.Log(err)
