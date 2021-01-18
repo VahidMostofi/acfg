@@ -10,6 +10,8 @@ import (
 	"io"
 	"io/ioutil"
 	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -87,18 +89,47 @@ func (k *K8sManager) Deploy(ctx context.Context, reader io.Reader) error{
 }
 
 func (k *K8sManager) UpdateConfigurationsAndWait(ctx context.Context, config map[string]*autocfg.Configuration) error{
-	// there is a configuration object
-	// create the deployment using that, d would be the deployment object
-	// for each configuration we update we call wg.Add(1)
-	var d *v1.Deployment = nil
-	err := k.updateDeployment(ctx, d)
-	if err != nil{
-		return errors.Wrapf(err, "error while updating deployment for %s", d.Name)
-	}
-	//go waitDeploymentHaveDesiredCondition(context.TODO(), deploymentsClient,"NewReplicaSetAvailable", targetedDeployments[s].Name,wg)
-	//wg.Done()
 
-	return nil //TODO return appropriate error
+	wg := &sync.WaitGroup{}
+
+	deploymentsClient := k.clientSet.AppsV1().Deployments(k.namespace)
+	for resourceName, c := range config{
+		log.Debug("UpdateConfigurationsAndWait() updating deployment", resourceName)
+		deploymentObj, getErr := deploymentsClient.Get(ctx, resourceName, metav1.GetOptions{})
+		if getErr != nil{
+			errors.Wrap(getErr, fmt.Sprintf("failed to get latest version of Deployment: %s", resourceName))
+		}
+
+		// update replica count
+		deploymentObj.Spec.Replicas = int32Ptr(int32(*c.ReplicaCount))
+
+		// update CPU and memory
+		deploymentObj.Spec.Template.Spec.Containers[0].Resources = corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				"cpu":    resource.MustParse(c.GetCPUStringForK8s()),
+				"memory": resource.MustParse(c.GetMemoryStringForK8s()),
+			},
+			Requests: corev1.ResourceList{
+				"cpu":    resource.MustParse(c.GetCPUStringForK8s()),
+				"memory": resource.MustParse(c.GetMemoryStringForK8s()),
+			},
+		}
+
+		// patch environment variables
+		// TODO
+		log.Debug("UpdateConfigurationsAndWait() calling updateDeployment deployment", resourceName)
+		err := k.updateDeployment(ctx, deploymentObj)
+		if err != nil{
+			return errors.Wrapf(err, "error while updating deployment for %s", deploymentObj.Name)
+		}
+
+		wg.Add(1)
+		go waitDeploymentHaveDesiredCondition(ctx, deploymentsClient,"NewReplicaSetAvailable", deploymentObj.Name,wg, time.Second * 10)
+	}
+
+	wg.Wait()
+
+	return nil
 }
 
 func (k *K8sManager) updateDeployment(ctx context.Context, targetDeployment *v1.Deployment) error {

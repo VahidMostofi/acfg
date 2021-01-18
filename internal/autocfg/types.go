@@ -9,6 +9,7 @@ import (
 	"github.com/vahidmostofi/acfg/internal/aggregators/utilizations"
 	"github.com/vahidmostofi/acfg/internal/workload"
 	"k8s.io/apimachinery/pkg/util/json"
+	"strconv"
 )
 
 type Configuration struct{
@@ -32,6 +33,16 @@ func (c *Configuration) DeepCopy() *Configuration{
 	}
 
 	return c
+}
+
+func (c *Configuration) GetCPUStringForK8s() string{
+	s := strconv.FormatInt(*c.CPU, 10) + "m"
+	return s
+}
+
+func (c *Configuration) GetMemoryStringForK8s() string{
+	s := strconv.FormatInt(*c.Memory, 10) + "Mi"
+	return s
 }
 
 func GetHash(c map[string]*Configuration, version string) (string,error){
