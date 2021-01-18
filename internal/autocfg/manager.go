@@ -16,6 +16,7 @@ import (
 	"github.com/vahidmostofi/acfg/internal/workload"
 	"gopkg.in/yaml.v2"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -135,7 +136,7 @@ func (a *AutoConfigManager) isConfigurationValid(cs map[string]*Configuration) (
 }
 
 func (a *AutoConfigManager) storeTestInformation(test *TestInformation) error{
-	filePath := a.storePathPrefix + test.Name // TODO clean, concat
+	filePath := filepath.Join(filepath.Clean(a.storePathPrefix) + test.Name) // TODO is it always local? no s3?
 	log.Infof("saving file at %s", filePath)
 	fo, err := os.Create(filePath)
 	if err != nil{
@@ -156,7 +157,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigAgent autoconfigurer.
 		AutoconfiguringApproach:autoConfigAgent.GetName(),
 		Iterations: make([]*IterationInformation,0),
 		InputWorkload: inputWorkload,
-		VersionCode: viper.GetString(constants.CONFIG_VERSION_CODE),
+		VersionCode: viper.GetString(constants.VersionCode),
 	}
 
 	log.Debug("AutoConfigManager.Run() waiting for all deployments to be available ")

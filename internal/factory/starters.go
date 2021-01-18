@@ -11,30 +11,37 @@ import (
 	"github.com/vahidmostofi/acfg/internal/autocfg"
 	"github.com/vahidmostofi/acfg/internal/constants"
 	"github.com/vahidmostofi/acfg/internal/dataaccess"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 )
 
 func newConfigDatabase()(dataaccess.ConfigDatabase,error){
 	var err error
 	var cd dataaccess.ConfigDatabase
-	switch viper.Get(constants.CONFIG_CONFIGURATION_DATABASE_TYPE) {
+	switch viper.Get(constants.AutoConfigureCacheDatabaseType) {
 	case "s3":
-		region := viper.GetString(constants.CONFIG_CONFIGURATION_DATABASE_S3_REGION)
-		bucket := viper.GetString(constants.CONFIG_CONFIGURATION_DATABASE_S3_BUCKET)
+		region := viper.GetString(constants.AutoConfigureCacheS3Region)
+		bucket := viper.GetString(constants.AutoConfigureCacheS3Bucket)
+		if len(region) == 0 || len(bucket) == 0{
+			panic("len(region) or len(bucket) is 0")
+		}
 		cd, err = dataaccess.NewAWSConfigurationDatabase(region, bucket)
 		if err != nil{
 			return nil, errors.Wrapf(err, "error while creating s3 config database %s %s",region, bucket)
 		}
 		break
 	default:
-		return nil, errors.New(fmt.Sprintf("unknown ConfigDatabase type: %s", viper.Get(constants.CONFIG_CONFIGURATION_DATABASE_TYPE) ))
+		return nil, errors.New(fmt.Sprintf("unknown ConfigDatabase type: %s", viper.Get(constants.AutoConfigureCacheDatabaseType) ))
 	}
 	return cd, nil
 }
 
 func getEndpointsFilters()(map[string]map[string]interface{},error){
-	endpointsFilter, ok := viper.Get(constants.CONFIG_ENDPOINTS_FILTERS).(map[string]map[string]interface{})
+	endpointsFilter, ok := viper.Get(constants.EndpointsFilters).(map[string]map[string]interface{})
 	if !ok {
-		return nil, errors.Errorf("cant find endpoints filters in configs using: %s with type map[string]map[string]interface{}", constants.CONFIG_ENDPOINTS_FILTERS)
+		return nil, errors.Errorf("cant find endpoints filters in configs using: %s with type map[string]map[string]interface{}", constants.EndpointsFilters)
 	}
 	return endpointsFilter, nil
 }
@@ -44,18 +51,18 @@ func newEndpointsAggregator() (*endpointsagg.EndpointsAggregator, error){
 	endpointsFilter, err := getEndpointsFilters()
 	if err != nil{ return nil, err}
 	epagArgs := map[string]interface{}{
-		"url": viper.Get(constants.CONFIG_INFLUXDB_URL), //IF YOU CHANGED THIS, CHANGE THE ERROR BELOW
-		"token": viper.Get(constants.CONFIG_INFLUXDB_TOKEN),
-		"organization": viper.Get(constants.CONFIG_INFLUXDB_ORG),
-		"bucket": viper.Get(constants.CONFIG_INFLUXDB_BUCKET),
+		"url": viper.Get(constants.EndpointsAggregatorArgsURL), //IF YOU CHANGED THIS, CHANGE THE ERROR BELOW
+		"token": viper.Get(constants.EndpointsAggregatorArgsToken),
+		"organization": viper.Get(constants.EndpointsAggregatorArgsOrganization),
+		"bucket": viper.Get(constants.EndpointsAggregatorArgsBucket),
 	}
-	ep, err := endpointsagg.NewEndpointsAggregator(viper.GetString(constants.CONFIG_ENDPOINTS_AGGREGATOR_TYPE), epagArgs, endpointsFilter)
+	ep, err := endpointsagg.NewEndpointsAggregator(viper.GetString(constants.EndpointsAggregatorType), epagArgs, endpointsFilter)
 	if err != nil{
 		return nil, errors.Wrapf(err, "error while creating EndpointsAggregator, these might be useful: \"%s, %s, %s, %s, %v",
-			viper.Get(constants.CONFIG_INFLUXDB_URL),
+			viper.Get(constants.EndpointsAggregatorArgsURL),
 			"some token value",
-			viper.Get(constants.CONFIG_INFLUXDB_ORG),
-			viper.Get(constants.CONFIG_INFLUXDB_BUCKET),
+			viper.Get(constants.EndpointsAggregatorArgsOrganization),
+			viper.Get(constants.EndpointsAggregatorArgsBucket),
 			endpointsFilter,
 		)
 	}
@@ -64,44 +71,44 @@ func newEndpointsAggregator() (*endpointsagg.EndpointsAggregator, error){
 
 func getSystemStructure() (*sysstructureagg.SystemStructure, error){
 	// system structure
-	tempConverted, ok := viper.Get(constants.CONFIG_ENDPOINTS_2_RESOURCES).(map[string][]string)
+	tempConverted, ok := viper.Get(constants.SystemStructureAggregatorEndpoints2Resources).(map[string][]string)
 	if !ok {
-		return nil, errors.Errorf("cant find endpoints to resources in configs using: %s with type map[string]map[string]interface{}", constants.CONFIG_ENDPOINTS_2_RESOURCES)
+		return nil, errors.Errorf("cant find endpoints to resources in configs using: %s with type map[string]map[string]interface{}", constants.SystemStructureAggregatorEndpoints2Resources)
 	}
-	ss, err := sysstructureagg.NewSystemStructure(viper.GetString(constants.CONFIG_SYSTEM_STRUCTURE_AGGREGATOR_TYPE), tempConverted)
+	ss, err := sysstructureagg.NewSystemStructure(viper.GetString(constants.SystemStructureAggregatorType), tempConverted)
 	if err != nil{
-		return nil, errors.Wrapf(err, "error while creating system structure aggregator, these might be useful: %s, %v", viper.GetString(constants.CONFIG_SYSTEM_STRUCTURE_AGGREGATOR_TYPE), tempConverted)
+		return nil, errors.Wrapf(err, "error while creating system structure aggregator, these might be useful: %s, %v", viper.GetString(constants.SystemStructureAggregatorType), tempConverted)
 	}
 	return ss, err
 }
 
 func getResourceFilters() (map[string]map[string]interface{},error){
 	// resource filters
-	resourceFilters, ok := viper.Get(constants.CONFIG_RESOURCE_FILTERS).(map[string]map[string]interface{})
+	resourceFilters, ok := viper.Get(constants.ResourceFilters).(map[string]map[string]interface{})
 	if !ok {
-		return nil, errors.Errorf("cant find resource filters in configs using: %s with type map[string]map[string]interface{}", constants.CONFIG_RESOURCE_FILTERS)
+		return nil, errors.Errorf("cant find resource filters in configs using: %s with type map[string]map[string]interface{}", constants.ResourceFilters)
 	}
 	return resourceFilters, nil
 }
 
-func newUsageAggregator()(*ussageagg.UsageAggregator,error){
+func newResourceUsageAggregator()(*ussageagg.UsageAggregator,error){
 	rfs, err := getResourceFilters()
 	if err != nil{ return nil, err}
 
 	// usage Aggregator
 	uagArgs := map[string]interface{}{
-		"url": viper.Get(constants.CONFIG_INFLUXDB_URL), //IF YOU CHANGED THIS, CHANGE THE ERROR BELOW
-		"token": viper.Get(constants.CONFIG_INFLUXDB_TOKEN),
-		"organization": viper.Get(constants.CONFIG_INFLUXDB_ORG),
-		"bucket": viper.Get(constants.CONFIG_INFLUXDB_BUCKET),
+		"url": viper.Get(constants.ResourceUsageAggregatorArgsURL), //IF YOU CHANGED THIS, CHANGE THE ERROR BELOW
+		"token": viper.Get(constants.ResourceUsageAggregatorArgsToken),
+		"organization": viper.Get(constants.ResourceUsageAggregatorArgsOrganization),
+		"bucket": viper.Get(constants.ResourceUsageAggregatorArgsBucket),
 	}
-	ug, err := ussageagg.NewUsageAggregator(viper.GetString(constants.CONFIG_USAGE_AGGREGATOR_TYPE), uagArgs, rfs)
+	ug, err := ussageagg.NewUsageAggregator(viper.GetString(constants.ResourceUsageAggregatorType), uagArgs, rfs)
 	if err != nil{
-		return nil, errors.Wrapf(err, "error while creating EndpointsAggregator, these might be useful: \"%s, %s, %s, %s, %v",
-			viper.Get(constants.CONFIG_INFLUXDB_URL),
+		return nil, errors.Wrapf(err, "error while creating ResourceUsageAggregator, these might be useful: \"%s, %s, %s, %s, %v",
+			viper.Get(constants.ResourceUsageAggregatorArgsURL),
 			"some token value",
-			viper.Get(constants.CONFIG_INFLUXDB_ORG),
-			viper.Get(constants.CONFIG_INFLUXDB_BUCKET),
+			viper.Get(constants.ResourceUsageAggregatorArgsOrganization),
+			viper.Get(constants.ResourceUsageAggregatorArgsBucket),
 			rfs,
 		)
 	}
@@ -109,15 +116,42 @@ func newUsageAggregator()(*ussageagg.UsageAggregator,error){
 }
 
 func newWorkloadAggregator()(workloadagg.WorkloadAggregator, error){
-	url := viper.GetString(constants.CONFIG_INFLUXDB_URL)
-	token := viper.GetString(constants.CONFIG_INFLUXDB_TOKEN)
-	organization := viper.GetString(constants.CONFIG_INFLUXDB_ORG)
-	bucket := viper.GetString(constants.CONFIG_INFLUXDB_BUCKET)
-	wg, err := workloadagg.NewInfluxDBWA(url, token, organization, bucket)
-	if err != nil{
-		return nil, errors.Wrapf(err, "error while creating workload aggregator with %s %s %s %s", url, "some token", organization, bucket)
+	if viper.GetString(constants.WorkloadAggregatorType) == "influxdb"{
+		url := viper.GetString(constants.WorkloadAggregatorArgsURL)
+		token := viper.GetString(constants.WorkloadAggregatorArgsToken)
+		organization := viper.GetString(constants.WorkloadAggregatorArgsOrganization)
+		bucket := viper.GetString(constants.WorkloadAggregatorArgsBucket)
+		wg, err := workloadagg.NewInfluxDBWA(url, token, organization, bucket)
+		if err != nil{
+			return nil, errors.Wrapf(err, "error while creating workload aggregator with %s %s %s %s", url, "some token", organization, bucket)
+		}
+		return wg, err
 	}
-	return wg, err
+	return nil, errors.New("unknown worker aggregator type: " + viper.GetString(constants.WorkloadAggregatorType))
+}
+
+func getStoreDirectory() string{
+	path := viper.GetString(constants.ResultsDirectory)
+	parts := strings.Split(path, "/")
+	for i := range parts{
+		if parts[i][0] == '$'{
+			parts[i] = viper.GetString(parts[i][1:])
+		}
+	}
+	p := filepath.Join(parts...)
+	err := os.MkdirAll(p, os.ModePerm)
+	if err != nil{
+		panic(err)
+	}
+	return p
+}
+
+func getWaitTimes() autocfg.WaitTimes{
+	w := autocfg.WaitTimes{
+		WaitAfterConfigIsDeployed: time.Duration(viper.GetInt(constants.WaitTimesWaitAfterConfigIsDeployedSeconds)) * time.Second,
+		LoadTestDuration: time.Duration(viper.GetInt(constants.WaitTimesLoadTestDurationSeconds)) * time.Second,
+	}
+	return w
 }
 
 // NewAutoConfigureManager returns new *AutoConfigManager
@@ -137,7 +171,7 @@ func NewAutoConfigureManager() (*autocfg.AutoConfigManager,error){
 	if err != nil{ return nil, err}
 
 	// usage aggregator
-	ug, err := newUsageAggregator()
+	ug, err := newResourceUsageAggregator()
 	if err != nil{ return nil, err}
 
 	// workload aggregator
@@ -149,21 +183,21 @@ func NewAutoConfigureManager() (*autocfg.AutoConfigManager,error){
 	if err != nil {return nil, err}
 
 	args := &autocfg.AutoConfigManagerArgs {
-		Namespace: viper.GetString(constants.CONFIG_SYSTEM_NAMESPACE),
-		DeploymentsToManage: viper.GetStringSlice(constants.CONFIG_SYSTEM_DEPLOYMENTS_TO_MANAGE),
+		Namespace: viper.GetString(constants.TargetSystemNamespace),
+		DeploymentsToManage: viper.GetStringSlice(constants.TargetSystemDeploymentsToManage),
 		CfgValidation: autocfg.ConfigurationValidation{
-			TotalAvailableMemory: viper.GetInt64(constants.CONFIG_VALIDATION_TOTAL_MEMORY),
-			TotalAvailableCPU: viper.GetInt64(constants.CONFIG_VALIDATION_TOTAL_CPU),
+			TotalAvailableMemory: viper.GetInt64(constants.ConfigurationValidationTotalMemory),
+			TotalAvailableCPU: viper.GetInt64(constants.ConfigurationValidationTotalCpu),
 		},
-		UsingHash: viper.GetBool(constants.CONFIG_VALIDATION_USE_CACHE),
+		UsingHash: viper.GetBool(constants.AutoConfigureUseCache),
 		ConfigDatabase: cd,
-		WaitTimes: viper.Get(constants.CONFIG_WAIT_TIMES).(autocfg.WaitTimes),
+		WaitTimes: getWaitTimes(),
 		EndpointsAggregator: ep,
 		SystemStructure: ss,
 		UsageAggregator: ug,
 		WorkloadAggregator: wg,
 		EndpointsFilter: epf,
-		StorePathPrefix: viper.GetString(constants.CONFIG_RESULTS_PREFIX_PATH),
+		StorePathPrefix: getStoreDirectory(),
 	}
 
 	acfgManager, err := autocfg.NewAutoConfigManager(args)

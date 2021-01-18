@@ -10,17 +10,17 @@ import (
 )
 
 func TestUsageAggregator_GetAggregatedCPUUtilizations(t *testing.T) {
-	viper.Set(constants.CONFIG_INFLUXDB_URL, os.Getenv("INFLUXDB_URL"))
-	viper.Set(constants.CONFIG_INFLUXDB_TOKEN, os.Getenv("INFLUXDB_TOKEN"))
-	viper.Set(constants.CONFIG_INFLUXDB_ORG, os.Getenv("INFLUXDB_ORG"))
-	viper.Set(constants.CONFIG_INFLUXDB_BUCKET, os.Getenv("INFLUXDB_BUCKET"))
+	viper.Set(constants.EndpointsAggregatorArgsURL, os.Getenv("INFLUXDB_URL"))
+	viper.Set(constants.EndpointsAggregatorArgsToken, os.Getenv("INFLUXDB_TOKEN"))
+	viper.Set(constants.EndpointsAggregatorArgsOrganization, os.Getenv("INFLUXDB_ORG"))
+	viper.Set(constants.EndpointsAggregatorArgsBucket, os.Getenv("INFLUXDB_BUCKET"))
 
 	resourceFilters := map[string]map[string]interface{}{
 		"auth": {"POD_NAME_REGEX":"^auth-*"},
 		"gateway": {"POD_NAME_REGEX":"^gateway-*"},
 		"books": {"POD_NAME_REGEX":"^books-*"},
 	}
-	viper.Set(constants.CONFIG_RESOURCE_FILTERS, resourceFilters)
+	viper.Set(constants.ResourceFilters, resourceFilters)
 	i,err := NewUsageAggregator("influxdb")
 	if err != nil{
 		t.Log(err)
