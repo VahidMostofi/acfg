@@ -6,8 +6,6 @@ import (
 	"github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
-	"github.com/vahidmostofi/acfg/internal/constants"
 	"github.com/vahidmostofi/acfg/internal/dataaccess"
 	"github.com/vahidmostofi/acfg/internal/workload"
 	"math"
@@ -30,12 +28,7 @@ type InfluxDBWA struct{
 }
 
 // NewInfluxDBWA returns a new InfluxDBWA
-func NewInfluxDBWA() (*InfluxDBWA,error){
-	url := viper.GetString(constants.CONFIG_INFLUXDB_URL)
-	token := viper.GetString(constants.CONFIG_INFLUXDB_TOKEN)
-	organization := viper.GetString(constants.CONFIG_INFLUXDB_ORG)
-	bucket := viper.GetString(constants.CONFIG_INFLUXDB_BUCKET)
-
+func NewInfluxDBWA(url, token, organization, bucket string) (*InfluxDBWA,error){
 	if len(strings.Trim(url, " ")) == 0{
 		return nil, errors.Errorf("the argument %s cant be empty string", "url")
 	}
