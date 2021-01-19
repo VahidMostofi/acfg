@@ -13,6 +13,7 @@ import (
 
 var(
 	cfgFile string
+	testName string
 )
 
 var AutoConfigCmd = &cobra.Command{
@@ -25,12 +26,16 @@ var AutoConfigCmd = &cobra.Command{
 }
 
 func init() {
-	cobra.OnInitialize(initConfigAutConfigCmd)
-	AutoConfigCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (there is not default)")
+	cobra.OnInitialize(initConfigAutoConfigCmd)
+	AutoConfigCmd.Flags().StringVar(&cfgFile, "config", "", "config file (there is not default)")
 	AutoConfigCmd.MarkFlagRequired("config")
+
+	AutoConfigCmd.Flags().StringVar(&testName, "name", "", "name of the test (there is no default)")
+	AutoConfigCmd.MarkFlagRequired("name")
+	fmt.Println("inited")
 }
 
-func initConfigAutConfigCmd(){
+func initConfigAutoConfigCmd(){
 	if cfgFile == ""{
 		fmt.Println("you must pass the config. use --config")
 		os.Exit(1)

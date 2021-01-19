@@ -5,14 +5,15 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"github.com/vahidmostofi/acfg/internal/aggregators"
 	"github.com/vahidmostofi/acfg/internal/aggregators/endpointsagg"
 	"github.com/vahidmostofi/acfg/internal/aggregators/sysstructureagg"
 	"github.com/vahidmostofi/acfg/internal/aggregators/ussageagg"
 	"github.com/vahidmostofi/acfg/internal/aggregators/workloadagg"
-	"github.com/vahidmostofi/acfg/internal/autocfg/autoconfigurer"
-	"github.com/vahidmostofi/acfg/internal/constants"
-	"github.com/vahidmostofi/acfg/internal/dataaccess"
 	"github.com/vahidmostofi/acfg/internal/clustermanager"
+	"github.com/vahidmostofi/acfg/internal/configuration"
+	"github.com/vahidmostofi/acfg/internal/constants"
+	"github.com/vahidmostofi/acfg/internal/strategies"
 	"github.com/vahidmostofi/acfg/internal/workload"
 	"gopkg.in/yaml.v2"
 	"os"
@@ -31,33 +32,33 @@ type ConfigurationValidation struct{
 }
 
 type AutoConfigManager struct{
-	clusterManager clustermanager.ClusterManager
+	clusterManager          clustermanager.ClusterManager
 	configurationValidation ConfigurationValidation
-	usingHash bool
-	configDatabase dataaccess.ConfigDatabase
-	waitTimes WaitTimes
-	endpointsAggregator *endpointsagg.EndpointsAggregator
-	systemStructure *sysstructureagg.SystemStructure
-	usageAggregator *ussageagg.UsageAggregator
-	workloadAggregator workloadagg.WorkloadAggregator
-	endpointsFilter map[string]map[string]interface{}
-	storePathPrefix string
-	cancelFunc context.CancelFunc
+	usingHash               bool
+	configDatabase          aggregators.ConfigDatabase
+	waitTimes               WaitTimes
+	endpointsAggregator     *endpointsagg.EndpointsAggregator
+	systemStructure         *sysstructureagg.SystemStructure
+	usageAggregator         *ussageagg.UsageAggregator
+	workloadAggregator      workloadagg.WorkloadAggregator
+	endpointsFilter         map[string]map[string]interface{}
+	storePathPrefix         string
+	cancelFunc              context.CancelFunc
 }
 
 type AutoConfigManagerArgs struct{
-	Namespace string
+	Namespace           string
 	DeploymentsToManage []string
-	CfgValidation ConfigurationValidation
-	UsingHash bool
-	ConfigDatabase dataaccess.ConfigDatabase
-	WaitTimes WaitTimes
+	CfgValidation       ConfigurationValidation
+	UsingHash           bool
+	ConfigDatabase      aggregators.ConfigDatabase
+	WaitTimes           WaitTimes
 	EndpointsAggregator *endpointsagg.EndpointsAggregator
-	SystemStructure *sysstructureagg.SystemStructure
-	UsageAggregator *ussageagg.UsageAggregator
-	WorkloadAggregator workloadagg.WorkloadAggregator
-	EndpointsFilter map[string]map[string]interface{}
-	StorePathPrefix string
+	SystemStructure     *sysstructureagg.SystemStructure
+	UsageAggregator     *ussageagg.UsageAggregator
+	WorkloadAggregator  workloadagg.WorkloadAggregator
+	EndpointsFilter     map[string]map[string]interface{}
+	StorePathPrefix     string
 }
 
 func NewAutoConfigManager(args *AutoConfigManagerArgs) (*AutoConfigManager,error){
@@ -83,11 +84,11 @@ func NewAutoConfigManager(args *AutoConfigManagerArgs) (*AutoConfigManager,error
 	return a,nil
 }
 
-func (a *AutoConfigManager) aggregatedData(startTime, finishTime int64) (*AggregatedData, error){
+func (a *AutoConfigManager) aggregatedData(startTime, finishTime int64) (*aggregators.AggregatedData, error){
 	var err error
 
 	// response times
-	ag := &AggregatedData{}
+	ag := &aggregators.AggregatedData{}
 
 	// Response Times
 	ag.ResponseTimes, err = a.endpointsAggregator.GetEndpointsResponseTimes(startTime, finishTime)
@@ -115,7 +116,7 @@ func (a *AutoConfigManager) aggregatedData(startTime, finishTime int64) (*Aggreg
 	return ag, nil
 }
 
-func (a *AutoConfigManager) isConfigurationValid(cs map[string]*Configuration) (string,bool){
+func (a *AutoConfigManager) isConfigurationValid(cs map[string]*configuration.Configuration) (string,bool){
 	var totalCPU int64
 	var totalMemory int64
 	for _,config := range cs{
@@ -148,13 +149,13 @@ func (a *AutoConfigManager) storeTestInformation(test *TestInformation) error{
 }
 
 
-func (a *AutoConfigManager) Run(testName string, autoConfigAgent autoconfigurer.AutoConfigurationAgent, inputWorkload *workload.Workload) error {
+func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strategies.Strategy, inputWorkload *workload.Workload) error {
 	ctx, cnF := context.WithCancel(context.Background())
 	a.cancelFunc = cnF
 
 	testInformation := &TestInformation{
 		Name: testName,
-		AutoconfiguringApproach:autoConfigAgent.GetName(),
+		AutoconfiguringApproach:autoConfigStrategyAgent.GetName(),
 		Iterations: make([]*IterationInformation,0),
 		InputWorkload: inputWorkload,
 		VersionCode: viper.GetString(constants.VersionCode),
@@ -166,7 +167,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigAgent autoconfigurer.
 
 	// get the currentConfiguration from aut configuration . initialConfiguration()
 	log.Debug("AutoConfigManager.Run() getting configuration with GetInitialConfiguration()")
-	currentConfig, err := autoConfigAgent.GetInitialConfiguration(inputWorkload, nil) // TODO aggData is nil
+	currentConfig, err := autoConfigStrategyAgent.GetInitialConfiguration(inputWorkload, nil) // TODO aggData is nil
 	if err != nil{
 		return errors.Wrap(err, "error getting InitialConfiguration")
 	}
@@ -235,7 +236,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigAgent autoconfigurer.
 		a.storeTestInformation(testInformation)
 
 		// pass all these information(data+) to the auto configuring agent and get the new configuration from it
-		currentConfig, isDone, err := autoConfigAgent.ConfigureNextStep(currentConfig, inputWorkload, iterInfo.AggregatedData)
+		currentConfig, isDone, err := autoConfigStrategyAgent.ConfigureNextStep(currentConfig, inputWorkload, iterInfo.AggregatedData)
 		if err != nil{
 			return errors.Wrap(err, "error while getting next configuration")
 		}
@@ -253,4 +254,15 @@ func (a *AutoConfigManager) Run(testName string, autoConfigAgent autoconfigurer.
 
 	// TODO we should listen to signals and undeploy everything. Graceful shutdown.
 	return nil
+}
+
+// TODO use this!
+func CheckCondition(data *aggregators.AggregatedData, condition Condition) (bool, error){
+	if condition.Type == "ResponseTime"{
+		value := condition.ComputeFn(*data.ResponseTimes[condition.EndpointName])
+		if value <= condition.Threshold{
+			return true, nil
+		}
+	}
+	return false, nil
 }

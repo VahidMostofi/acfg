@@ -21,10 +21,10 @@ const WorkloadAggregatorArgsBucket = "WorkloadAggregator.Args.Bucket"
 const WorkloadAggregatorArgsOrganization = "WorkloadAggregator.Args.Organization"
 
 const SystemStructureAggregatorType = "SystemStructureAggregator.Type"
-const SystemStructureAggregatorEndpoints2Resources = "SystemStructure.Endpoints2Resources"
+const SystemStructureAggregatorEndpoints2Resources = "SystemStructureAggregator.Endpoints2Resources"
 
 const ResourceFilters = "ResourceFilters"   // needs to be map[string]map[string]interface{}
-const EndpointsFilters = "ResourceFilters" // needs to be map[string]map[string]interface{}
+const EndpointsFilters = "EndpointsFilters" // needs to be map[string]map[string]interface{}
 
 const TargetSystemNamespace = "TargetSystem.Namespace"
 const TargetSystemDeploymentsToManage = "TargetSystem.DeploymentsToManage" // []string
@@ -43,3 +43,8 @@ const TargetSystemWorkloadName = "TargetSystem.Workload.Name"
 
 const WaitTimesWaitAfterConfigIsDeployedSeconds = "WaitTimes.WaitAfterConfigIsDeployedSeconds"
 const WaitTimesLoadTestDurationSeconds = "WaitTimes.LoadTestDuration"
+
+const TestName = "TestName"
+
+const TargetSystemWorkload = "TargetSystem.Workload"
+const TargetSystemWorkloadBody = "TargetSystem.Workload.Body"
