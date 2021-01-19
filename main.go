@@ -13,15 +13,16 @@ import (
 
 func main() {
 	cmd.Execute()
-	// TODO this needs to be moved where we actually create CPU utilization
-	log.SetReportCaller(true)
+	// TODO this needs to be moved where we actually create CPUThreshold strategy approach
+	//log.SetReportCaller(true)
 	log.SetLevel(log.DebugLevel)
 	acfgManager, err := factory.NewAutoConfigureManager()
 	if err != nil{
 		log.Panic(err.Error())
 		os.Exit(1)
 	}
-	autoConfigAgent,err := strategies.NewCPUThreshold("mean", 50, []string{"login","get-book","edit-book"}, []string{"auth","books","gateway"},500, 512)
+	autoConfigAgent,err := strategies.NewCPUThreshold("mean", 50, []string{"login","get-book","edit-book"}, []string{"auth","books","gateway"},200, 256)
+	viper.Set(constants.StrategyName, "CPUThreshold")
 	if err != nil{
 		panic(err)
 	}

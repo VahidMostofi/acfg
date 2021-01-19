@@ -19,6 +19,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -46,6 +47,7 @@ type AutoConfigManager struct{
 	endpointsFilter         map[string]map[string]interface{}
 	storePathPrefix         string
 	cancelFunc              context.CancelFunc
+	sla						*SLA
 }
 
 type AutoConfigManagerArgs struct{
@@ -61,6 +63,7 @@ type AutoConfigManagerArgs struct{
 	WorkloadAggregator  workloadagg.WorkloadAggregator
 	EndpointsFilter     map[string]map[string]interface{}
 	StorePathPrefix     string
+	SLA 				*SLA
 }
 
 func NewAutoConfigManager(args *AutoConfigManagerArgs) (*AutoConfigManager,error){
@@ -81,7 +84,7 @@ func NewAutoConfigManager(args *AutoConfigManagerArgs) (*AutoConfigManager,error
 		workloadAggregator: args.WorkloadAggregator,
 		endpointsFilter: args.EndpointsFilter,
 		storePathPrefix: args.StorePathPrefix,
-
+		sla: args.SLA,
 	}
 	return a,nil
 }
@@ -140,7 +143,12 @@ func (a *AutoConfigManager) isConfigurationValid(cs map[string]*configuration.Co
 }
 
 func (a *AutoConfigManager) storeTestInformation(test *TestInformation) error{
-	filePath := filepath.Join(filepath.Clean(a.storePathPrefix) + test.Name) // TODO is it always local? no s3?
+	a.storePathPrefix = strings.ReplaceAll(a.storePathPrefix, "$STRATEGY.NAME", viper.GetString(constants.StrategyName))
+	err := os.MkdirAll(filepath.Clean(a.storePathPrefix), os.ModePerm)
+	if err != nil{
+		return errors.Wrapf(err, "there was error creating necessary directories.")
+	}
+	filePath := filepath.Join(filepath.Clean(a.storePathPrefix), test.Name + ".yaml") // TODO is it always local? no s3?
 	log.Infof("saving file at %s", filePath)
 	fo, err := os.Create(filePath)
 	if err != nil{
@@ -193,9 +201,9 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 				return errors.Wrapf(err, "error while retrieving configuration with hash %s", hashCode)
 			}
 			if ag == nil {
-				log.Debugf("AutoConfigManager.Run() no aggregatedData is found with hash code %s", hashCode)
+				log.Infof("AutoConfigManager.Run() no aggregatedData is found with hash code %s", hashCode)
 			} else {
-				log.Debugf("AutoConfigManager.Run() aggregatedData is found with hash code %s", hashCode)
+				log.Infof("AutoConfigManager.Run() aggregatedData is found with hash code %s", hashCode)
 				iterInfo.AggregatedData = ag
 			}
 		}
@@ -242,11 +250,21 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 			}
 		}
 
+		// at this point we have the aggregated data, we either found it with cache or by running the load generator
+		for endpointName, responseTimes := range iterInfo.AggregatedData.ResponseTimes{
+			log.Infof("response times for %s: %s", endpointName, responseTimes.String())
+		}
+
 		testInformation.Iterations = append(testInformation.Iterations, iterInfo)
-		a.storeTestInformation(testInformation)
+		err = a.storeTestInformation(testInformation)
+		if err != nil{
+			return errors.Wrapf(err, "error while saving aggregated results.")
+		}
 
 		// pass all these information(data+) to the auto configuring agent and get the new configuration from it
-		currentConfig, isDone, err := autoConfigStrategyAgent.ConfigureNextStep(iterInfo.Configuration, inputWorkload, iterInfo.AggregatedData)
+		currentConfig, isChanged, err := autoConfigStrategyAgent.ConfigureNextStep(iterInfo.Configuration, inputWorkload, iterInfo.AggregatedData)
+		isDone := !isChanged
+		doneReason := ""
 		iterInfo.Configuration = currentConfig
 		if err != nil{
 			return errors.Wrap(err, "error while getting next configuration")
@@ -258,6 +276,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 		}
 
 		if isDone{
+			doneReason += "the strategy agent is done."
 			log.Infof("AutoConfigManager.Run() the autoconfiguring agent thinks we are done")
 			break
 		}
@@ -270,7 +289,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 // TODO use this!
 func CheckCondition(data *aggregators.AggregatedData, condition Condition) (bool, error){
 	if condition.Type == "ResponseTime"{
-		value := condition.ComputeFn(*data.ResponseTimes[condition.EndpointName])
+		value := condition.GetComputeFunction()(*data.ResponseTimes[condition.EndpointName])
 		if value <= condition.Threshold{
 			return true, nil
 		}

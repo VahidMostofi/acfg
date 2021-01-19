@@ -1,0 +1,12 @@
+- type: ResponseType
+  endpointName: login
+  threshold: 0.25
+  computeFunctionName: percentile_90
+- type: ResponseType
+  endpointName: get-book
+  threshold: 0.25
+  computeFunctionName: percentile_90
+- type: ResponseType
+  endpointName: edit-book
+  threshold: 0.25
+  computeFunctionName: percentile_90
