@@ -70,15 +70,15 @@ from(bucket: "$BUCKET_NAME")
 		query = strings.Replace(query, "$START_TIME", strconv.FormatInt(startTime, 10),-1 )
 		query = strings.Replace(query, "$FINISH_TIME", strconv.FormatInt(finishTime, 10),-1 )
 
-		httpMethod, ok := filters["HTTP_METHOD"]
+		httpMethod, ok := filters[strings.ToLower("HTTP_METHOD")]
 		if !ok{
-			return nil, errors.Errorf("HTTP_METHOD must be provided as filter for GetWorkload")
+			return nil, errors.Errorf("HTTP_METHOD must be provided as filter for GetWorkload %s", endpointName)
 		}
 		query = strings.Replace(query, "$HTTP_METHOD", httpMethod.(string), -1)
 
-		uriRegex, ok := filters["URI_REGEX"]
+		uriRegex, ok := filters[strings.ToLower("URI_REGEX")]
 		if !ok{
-			return nil, errors.Errorf("URI_REGEX must be provided as filter for GetWorkload")
+			return nil, errors.Errorf("URI_REGEX must be provided as filter for GetWorkload %s", endpointName)
 		}
 		query = strings.Replace(query, "$URI_REGEX", uriRegex.(string), -1)
 

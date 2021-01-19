@@ -112,8 +112,8 @@ func (k *K8s) UpdateConfigurationsAndWait(ctx context.Context, config map[string
 			},
 		}
 
-		// patch environment variables
-		// TODO
+		//TODO patch environment variables
+
 		wg.Add(1)
 		log.Debugf("UpdateConfigurationsAndWait() calling updateDeployment deployment %s", resourceName)
 		err := k.updateDeployment(ctx, deploymentObj)
@@ -145,7 +145,7 @@ func (k *K8s) updateDeployment(ctx context.Context, targetDeployment *v1.Deploym
 		isChanged := bytes.Compare(afterBytes,beforeBytes) != 0
 		log.Debugf("updateDeployment() comparing before and after for deployment %s: %t", targetDeployment.Name, isChanged)
 		if isChanged{
-			waitDeploymentHaveDesiredCondition(ctx, deploymentsClient, "ReplicaSetUpdated", targetDeployment.Name,nil,10 * time.Second) //TODO 10 second is hard coded
+			//waitDeploymentHaveDesiredCondition(ctx, deploymentsClient, "ReplicaSetUpdated", targetDeployment.Name,nil,10 * time.Second) //TODO 10 second is hard coded
 		}
 
 		return updateErr

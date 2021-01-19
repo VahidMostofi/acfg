@@ -12,6 +12,7 @@ import (
 	"github.com/vahidmostofi/acfg/internal/aggregators/workloadagg"
 	"github.com/vahidmostofi/acfg/internal/autocfg"
 	"github.com/vahidmostofi/acfg/internal/constants"
+	"gopkg.in/yaml.v2"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -143,13 +144,18 @@ func getStoreDirectory() string{
 			continue
 		}
 		if parts[i][0] == '$'{
-			parts[i] = viper.GetString(parts[i][1:])
+			value := viper.GetString(parts[i][1:])
+			if len(value) > 0{
+				parts[i] = value
+			}
 		}
 	}
 	p := filepath.Join(parts...)
-	err := os.MkdirAll(p, os.ModePerm)
-	if err != nil{
-		panic(err)
+	if path[0] == '/'{
+		p = "/" + p
+	}
+	if path[len(path)-1] != '/'{
+		path += "/"
 	}
 	return p
 }
@@ -191,6 +197,10 @@ func NewAutoConfigureManager() (*autocfg.AutoConfigManager,error){
 	epf, err := getEndpointsFilters()
 	if err != nil {return nil, err}
 
+	// get SLA
+	sla, err := getSLA()
+	if err != nil{return nil, err}
+
 	args := &autocfg.AutoConfigManagerArgs {
 		Namespace: viper.GetString(constants.TargetSystemNamespace),
 		DeploymentsToManage: viper.GetStringSlice(constants.TargetSystemDeploymentsToManage),
@@ -207,6 +217,7 @@ func NewAutoConfigureManager() (*autocfg.AutoConfigManager,error){
 		WorkloadAggregator: wg,
 		EndpointsFilter: epf,
 		StorePathPrefix: getStoreDirectory(),
+		SLA: sla,
 	}
 
 	acfgManager, err := autocfg.NewAutoConfigManager(args)
@@ -227,4 +238,23 @@ func parseMapMapInterface(in map[string]interface{}) (map[string]map[string]inte
 		res[key] = v
 	}
 	return res, nil
+}
+
+func getSLA() (*autocfg.SLA, error){
+	sla := &autocfg.SLA{
+		Conditions: make([]autocfg.Condition,0),
+	}
+
+	path := viper.GetString(constants.SLAConditionsFile)
+	f, err := os.Open(filepath.Clean(path))
+	if err != nil{
+		return nil, errors.Wrapf(err, "error while reading sla conditions file %s", path)
+	}
+
+	err = yaml.NewDecoder(f).Decode(&sla.Conditions)
+	if err != nil{
+		return nil, errors.Wrapf(err, "error while parsing sla conditions file %s", path)
+	}
+
+	return sla, nil
 }

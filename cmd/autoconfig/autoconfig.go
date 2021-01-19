@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/vahidmostofi/acfg/internal/constants"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,6 +54,8 @@ func initConfigAutoConfigCmd(){
 		replacer := strings.NewReplacer(".", "_")
 		viper.SetEnvKeyReplacer(replacer)
 		viper.MergeConfigMap(viper.AllSettings())
+
+		viper.Set(constants.TestName, testName)
 	}
 }
 

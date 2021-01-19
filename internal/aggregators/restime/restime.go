@@ -2,6 +2,7 @@ package restime
 
 import (
 	"context"
+	"fmt"
 	"github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/montanaflynn/stats"
 	"github.com/pkg/errors"
@@ -23,6 +24,18 @@ type ResponseTimeAggregator interface {
 
 // ResponseTimes is a named type for []float64 with helper functions
 type ResponseTimes []float64
+
+func (rts *ResponseTimes) String() string{
+	m, err := rts.GetMean()
+	if err != nil{panic(err)}
+	p90, err := rts.GetPercentile(90)
+	if err != nil{panic(err)}
+	p95, err := rts.GetPercentile(95)
+	if err != nil{panic(err)}
+	p99, err := rts.GetPercentile(99)
+	if err != nil{panic(err)}
+	return fmt.Sprintf("count: %d, mean: %fs, 90P: %fs, 95P: %fs, 99P: %fs", rts.GetCount(), m, p90, p95, p99)
+}
 
 // GetMean returns the average of response times
 func (rts *ResponseTimes) GetMean() (float64, error) {
@@ -112,13 +125,13 @@ from(bucket: "$BUCKET_NAME")
 	query = strings.Replace(query, "$FINISH_TIME", strconv.FormatInt(finishTime, 10),-1 )
 
 	conditions := ""
-	if httpMethod, ok := filters["HTTP_METHOD"]; ok{
+	if httpMethod, ok := filters[strings.ToLower("HTTP_METHOD")]; ok{
 		if conditions == ""{
 			conditions = " and "
 		}
 		conditions += "r.method == \"\\\"" + httpMethod.(string) + "\\\"\""
 	}
-	if uriRegex, ok := filters["URI_REGEX"]; ok{
+	if uriRegex, ok := filters[strings.ToLower("URI_REGEX")]; ok{
 		conditions += " and r.uri =~ /" + uriRegex.(string) + "/"
 	}
 	query = strings.Replace(query, "$CONDITIONS", conditions, -1)

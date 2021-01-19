@@ -49,3 +49,6 @@ const TestName = "TestName"
 
 const TargetSystemWorkload = "TargetSystem.Workload"
 const TargetSystemWorkloadBody = "TargetSystem.Workload.Body"
+
+const StrategyName = "StrategyName"
+const SLAConditionsFile = "SLAConditionsFile"

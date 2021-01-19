@@ -65,9 +65,11 @@ func (ct *CPUThreshold) ConfigureNextStep(currentConfig map[string]*configuratio
 		}
 		if whatToCompare > ct.utilizationThreshold{
 			newCount := int64Ptr(*newConfig[resource].ReplicaCount + 1)
-			log.Infof(ct.GetName(), "ConfigureNextStep() CPU utilization for %s is %f is more than %f changing replica from %d to %d", resource, whatToCompare, ct.utilizationThreshold, *newConfig[resource].ReplicaCount, *newCount)
+			log.Infof("%s.ConfigureNextStep() CPU utilization for %s is %f is more than %f changing replica from %d to %d", ct.GetName(), resource, whatToCompare, ct.utilizationThreshold, *newConfig[resource].ReplicaCount, *newCount)
 			newConfig[resource].ReplicaCount = newCount
 			isChanged = true
+		}else{
+			log.Infof("%s.ConfigureNextStep() CPU utilization for %s is %f is less than %f not changing replica from %d", ct.GetName(), resource, whatToCompare, ct.utilizationThreshold, *newConfig[resource].ReplicaCount)
 		}
 	}
 
