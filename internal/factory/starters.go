@@ -158,6 +158,7 @@ func getWaitTimes() autocfg.WaitTimes{
 	w := autocfg.WaitTimes{
 		WaitAfterConfigIsDeployed: time.Duration(viper.GetInt(constants.WaitTimesWaitAfterConfigIsDeployedSeconds)) * time.Second,
 		LoadTestDuration: time.Duration(viper.GetInt(constants.WaitTimesLoadTestDurationSeconds)) * time.Second,
+		WaitAfterLoadGeneratorIsDone: time.Duration(viper.GetInt(constants.WaitTimesWaitAfterLoadGeneratorIsDoneSeconds)) * time.Second,
 	}
 	return w
 }

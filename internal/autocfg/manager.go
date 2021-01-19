@@ -2,6 +2,7 @@ package autocfg
 
 import (
 	"context"
+	"fmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -21,9 +22,10 @@ import (
 	"time"
 )
 
-type WaitTimes struct{
-	WaitAfterConfigIsDeployed time.Duration //TODO
-	LoadTestDuration time.Duration //TODO
+type WaitTimes struct{ // if anything is added to this, you need to update starter which creates this object from config files
+	WaitAfterConfigIsDeployed time.Duration
+	LoadTestDuration time.Duration
+	WaitAfterLoadGeneratorIsDone time.Duration
 }
 
 type ConfigurationValidation struct{
@@ -129,11 +131,11 @@ func (a *AutoConfigManager) isConfigurationValid(cs map[string]*configuration.Co
 	if totalMemory > a.configurationValidation.TotalAvailableMemory && a.configurationValidation.TotalAvailableMemory > 0 {
 		return "not enough memory", false
 	}
-
-	if totalCPU > a.configurationValidation.TotalAvailableCPU && a.configurationValidation.TotalAvailableCPU > 0 {
-		return "not enough CPU", false
+	// CPU in config should be times 1000
+	maxAvailableCPU := a.configurationValidation.TotalAvailableCPU * 1000
+	if totalCPU > maxAvailableCPU && a.configurationValidation.TotalAvailableCPU > 0 {
+		return fmt.Sprintf("not enough CPU: %d vs %d", totalCPU, maxAvailableCPU), false
 	}
-
 	return "", true
 }
 
@@ -201,6 +203,12 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 		if iterInfo.AggregatedData == nil{
 
 			// deploy the new configuration and wait for it to be deployed
+			log.Infof("AutoConfigManager.Run() checking configuration before deploying")
+			reason, ok := a.isConfigurationValid(iterInfo.Configuration)
+			if !ok{
+				log.Infof("breaking the loop because configuration is not valid: %s", reason)
+				break
+			}
 			log.Infof("AutoConfigManager.Run() deploying the configuration")
 			a.clusterManager.UpdateConfigurationsAndWait(ctx, iterInfo.Configuration)
 			log.Infof("AutoConfigManager.Run() configurations deployed and ready")
@@ -220,6 +228,8 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 			// TODO stopping the load generator
 
 			iterInfo.FinishTime = time.Now().Unix()
+			log.Infof("AutoConfigManager.Run() load generator is done, waiting %s.", a.waitTimes.WaitAfterLoadGeneratorIsDone.String())
+			time.Sleep(a.waitTimes.WaitAfterLoadGeneratorIsDone)
 			iterInfo.AggregatedData , err = a.aggregatedData(iterInfo.StartTime, iterInfo.FinishTime)
 			if err != nil{
 				return errors.Wrapf(err, "error while aggregating data from %d to %d", iterInfo.StartTime, iterInfo.FinishTime)
@@ -236,12 +246,13 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 		a.storeTestInformation(testInformation)
 
 		// pass all these information(data+) to the auto configuring agent and get the new configuration from it
-		currentConfig, isDone, err := autoConfigStrategyAgent.ConfigureNextStep(currentConfig, inputWorkload, iterInfo.AggregatedData)
+		currentConfig, isDone, err := autoConfigStrategyAgent.ConfigureNextStep(iterInfo.Configuration, inputWorkload, iterInfo.AggregatedData)
+		iterInfo.Configuration = currentConfig
 		if err != nil{
 			return errors.Wrap(err, "error while getting next configuration")
 		}
 
-		if reason, isValid := a.isConfigurationValid(currentConfig); !isValid{
+		if reason, isValid := a.isConfigurationValid(iterInfo.Configuration); !isValid{
 			log.Infof("AutoConfigManager.Run() the new configuration is not valid because: %s; Breaking out of the loop", reason)
 			break
 		}
@@ -251,7 +262,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 			break
 		}
 	}
-
+	// TODO store the reason we are going out of the loop, cant do better? the config is not valid? we are done?
 	// TODO we should listen to signals and undeploy everything. Graceful shutdown.
 	return nil
 }

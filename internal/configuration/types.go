@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"fmt"
 	"strconv"
 )
 
@@ -10,6 +11,10 @@ type Configuration struct{
 	CPU *int64
 	Memory *int64
 	EnvironmentValues map[string]string
+}
+
+func (c *Configuration) String() string{
+	return fmt.Sprintf("%s: replica: %d, cpu: %d, memory: %dmb, envs: %v", c.ResourceType, *c.ReplicaCount, *c.CPU, *c.Memory, c.EnvironmentValues)
 }
 
 func (c *Configuration) DeepCopy() *Configuration{
