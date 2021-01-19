@@ -92,15 +92,14 @@ func (k *K8s) UpdateConfigurationsAndWait(ctx context.Context, config map[string
 
 	deploymentsClient := k.clientSet.AppsV1().Deployments(k.namespace)
 	for resourceName, c := range config{
-		log.Debug("UpdateConfigurationsAndWait() updating deployment ", resourceName)
+		log.Debugf("UpdateConfigurationsAndWait() updating deployment %s with %s", resourceName, c.String())
 		deploymentObj, getErr := deploymentsClient.Get(ctx, resourceName, metav1.GetOptions{})
 		if getErr != nil{
-			errors.Wrap(getErr, fmt.Sprintf("failed to get latest version of Deployment: %s", resourceName))
+			return errors.Wrap(getErr, fmt.Sprintf("failed to get latest version of Deployment: %s", resourceName))
 		}
 
 		// update replica count
 		deploymentObj.Spec.Replicas = int32Ptr(int32(*c.ReplicaCount))
-
 		// update CPU and memory
 		deploymentObj.Spec.Template.Spec.Containers[0].Resources = corev1.ResourceRequirements{
 			Limits: corev1.ResourceList{
@@ -115,13 +114,12 @@ func (k *K8s) UpdateConfigurationsAndWait(ctx context.Context, config map[string
 
 		// patch environment variables
 		// TODO
-		log.Debug("UpdateConfigurationsAndWait() calling updateDeployment deployment ", resourceName)
+		wg.Add(1)
+		log.Debugf("UpdateConfigurationsAndWait() calling updateDeployment deployment %s", resourceName)
 		err := k.updateDeployment(ctx, deploymentObj)
 		if err != nil{
 			return errors.Wrapf(err, "error while updating deployment for %s", deploymentObj.Name)
 		}
-
-		wg.Add(1)
 		go waitDeploymentHaveDesiredCondition(ctx, deploymentsClient,"NewReplicaSetAvailable", deploymentObj.Name,wg, time.Second * 10)
 	}
 
@@ -137,11 +135,11 @@ func (k *K8s) updateDeployment(ctx context.Context, targetDeployment *v1.Deploym
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := deploymentsClient.Get(ctx, targetDeployment.Name, metav1.GetOptions{})
 		if getErr != nil{
-			errors.Wrap(getErr, fmt.Sprintf("failed to get latest version of Deployment: %s", targetDeployment.Name))
+			return errors.Wrap(getErr, fmt.Sprintf("failed to get latest version of Deployment: %s", targetDeployment.Name))
 		}
 		beforeBytes, _ := result.Marshal()
 
-		returned, updateErr := deploymentsClient.Update(context.TODO(), result, metav1.UpdateOptions{})
+		returned, updateErr := deploymentsClient.Update(ctx, targetDeployment, metav1.UpdateOptions{})
 		afterBytes, _ := returned.Marshal()
 
 		isChanged := bytes.Compare(afterBytes,beforeBytes) != 0
@@ -158,7 +156,7 @@ func (k *K8s) updateDeployment(ctx context.Context, targetDeployment *v1.Deploym
 
 // waitDeploymentHaveDesiredCondition only works with a single container ! //TODO
 func waitDeploymentHaveDesiredCondition (ctx context.Context, deploymentClient v12.DeploymentInterface, desiredReason string, deploymentName string, wg *sync.WaitGroup, interval time.Duration){
-	log.Debugf("wating for container with conditoin %s for deployment %s", desiredReason, deploymentName)
+	log.Debugf("wating for container with condition %s for deployment %s", desiredReason, deploymentName)
 	wait.Poll(interval, 50*time.Minute, func() (bool, error){
 		var flag bool
 		dep, err := deploymentClient.Get(ctx, deploymentName, metav1.GetOptions{})
@@ -167,6 +165,7 @@ func waitDeploymentHaveDesiredCondition (ctx context.Context, deploymentClient v
 		}
 
 		for _,c := range dep.Status.Conditions {
+			log.Debugf("for %s got %s", deploymentName, c.Reason)
 			flag = c.Reason == desiredReason
 			if flag{
 				break

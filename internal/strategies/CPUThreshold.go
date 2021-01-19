@@ -39,8 +39,8 @@ func (ct *CPUThreshold) GetInitialConfiguration(workload *workload.Workload, agg
 	for _,resource := range ct.resources{
 		config[resource] = &configuration.Configuration{}
 		config[resource].ReplicaCount = int64Ptr(1)
-		config[resource].CPU = int64Ptr(1000)
-		config[resource].Memory = int64Ptr(512)
+		config[resource].CPU = int64Ptr(ct.initialCPU)
+		config[resource].Memory = int64Ptr(ct.initialMemory)
 		config[resource].ResourceType = "Deployment"
 	}
 

@@ -43,6 +43,7 @@ const TargetSystemWorkloadName = "TargetSystem.Workload.Name"
 
 const WaitTimesWaitAfterConfigIsDeployedSeconds = "WaitTimes.WaitAfterConfigIsDeployedSeconds"
 const WaitTimesLoadTestDurationSeconds = "WaitTimes.LoadTestDurationSeconds"
+const WaitTimesWaitAfterLoadGeneratorIsDoneSeconds = "WaitTimes.WaitAfterLoadGeneratorIsDoneSeconds"
 
 const TestName = "TestName"
 
