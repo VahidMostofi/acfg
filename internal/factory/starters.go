@@ -3,23 +3,25 @@ package factory
 import (
 	"fmt"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"github.com/vahidmostofi/acfg/internal/aggregators"
 	"github.com/vahidmostofi/acfg/internal/aggregators/endpointsagg"
 	"github.com/vahidmostofi/acfg/internal/aggregators/sysstructureagg"
 	"github.com/vahidmostofi/acfg/internal/aggregators/ussageagg"
 	"github.com/vahidmostofi/acfg/internal/aggregators/workloadagg"
 	"github.com/vahidmostofi/acfg/internal/autocfg"
 	"github.com/vahidmostofi/acfg/internal/constants"
-	"github.com/vahidmostofi/acfg/internal/dataaccess"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 )
 
-func newConfigDatabase()(dataaccess.ConfigDatabase,error){
+func newConfigDatabase()(aggregators.ConfigDatabase,error){
 	var err error
-	var cd dataaccess.ConfigDatabase
+	var cd aggregators.ConfigDatabase
 	switch viper.Get(constants.AutoConfigureCacheDatabaseType) {
 	case "s3":
 		region := viper.GetString(constants.AutoConfigureCacheS3Region)
@@ -27,7 +29,7 @@ func newConfigDatabase()(dataaccess.ConfigDatabase,error){
 		if len(region) == 0 || len(bucket) == 0{
 			panic("len(region) or len(bucket) is 0")
 		}
-		cd, err = dataaccess.NewAWSConfigurationDatabase(region, bucket)
+		cd, err = aggregators.NewAWSConfigurationDatabase(region, bucket)
 		if err != nil{
 			return nil, errors.Wrapf(err, "error while creating s3 config database %s %s",region, bucket)
 		}
@@ -39,9 +41,10 @@ func newConfigDatabase()(dataaccess.ConfigDatabase,error){
 }
 
 func getEndpointsFilters()(map[string]map[string]interface{},error){
-	endpointsFilter, ok := viper.Get(constants.EndpointsFilters).(map[string]map[string]interface{})
-	if !ok {
-		return nil, errors.Errorf("cant find endpoints filters in configs using: %s with type map[string]map[string]interface{}", constants.EndpointsFilters)
+	endpointsFilter, err := parseMapMapInterface(viper.GetStringMap(constants.EndpointsFilters))
+	if err != nil {
+		log.Errorf("this is found: %v", viper.Get(constants.EndpointsFilters))
+		return nil, errors.Errorf("cant find endpoints filters in configs using %s with type map[string]map[string]interface{}", constants.EndpointsFilters)
 	}
 	return endpointsFilter, nil
 }
@@ -71,10 +74,11 @@ func newEndpointsAggregator() (*endpointsagg.EndpointsAggregator, error){
 
 func getSystemStructure() (*sysstructureagg.SystemStructure, error){
 	// system structure
-	tempConverted, ok := viper.Get(constants.SystemStructureAggregatorEndpoints2Resources).(map[string][]string)
-	if !ok {
-		return nil, errors.Errorf("cant find endpoints to resources in configs using: %s with type map[string]map[string]interface{}", constants.SystemStructureAggregatorEndpoints2Resources)
-	}
+	tempConverted := viper.GetStringMapStringSlice(constants.SystemStructureAggregatorEndpoints2Resources)
+	//if !ok {
+	//	log.Errorf("this is found: %v", viper.Get(constants.SystemStructureAggregatorEndpoints2Resources))
+	//	return nil, errors.Errorf("cant find endpoints to resources in configs using %s with type map[string][]string", constants.SystemStructureAggregatorEndpoints2Resources)
+	//}
 	ss, err := sysstructureagg.NewSystemStructure(viper.GetString(constants.SystemStructureAggregatorType), tempConverted)
 	if err != nil{
 		return nil, errors.Wrapf(err, "error while creating system structure aggregator, these might be useful: %s, %v", viper.GetString(constants.SystemStructureAggregatorType), tempConverted)
@@ -84,8 +88,9 @@ func getSystemStructure() (*sysstructureagg.SystemStructure, error){
 
 func getResourceFilters() (map[string]map[string]interface{},error){
 	// resource filters
-	resourceFilters, ok := viper.Get(constants.ResourceFilters).(map[string]map[string]interface{})
-	if !ok {
+	resourceFilters, err := parseMapMapInterface(viper.GetStringMap(constants.ResourceFilters))
+	if err != nil{
+		log.Errorf("this is found: %v", viper.Get(constants.ResourceFilters))
 		return nil, errors.Errorf("cant find resource filters in configs using: %s with type map[string]map[string]interface{}", constants.ResourceFilters)
 	}
 	return resourceFilters, nil
@@ -134,6 +139,9 @@ func getStoreDirectory() string{
 	path := viper.GetString(constants.ResultsDirectory)
 	parts := strings.Split(path, "/")
 	for i := range parts{
+		if len(parts[i]) < 1{
+			continue
+		}
 		if parts[i][0] == '$'{
 			parts[i] = viper.GetString(parts[i][1:])
 		}
@@ -206,4 +214,16 @@ func NewAutoConfigureManager() (*autocfg.AutoConfigManager,error){
 	}
 
 	return acfgManager, errors.Wrap(err, "error while creating AutoConfigManager")
+}
+
+func parseMapMapInterface(in map[string]interface{}) (map[string]map[string]interface{},error){
+	res := make(map[string]map[string]interface{})
+	for key,value := range in{
+		v, ok := value.(map[string]interface{})
+		if !ok{
+			return nil, errors.New(fmt.Sprintf("cant convert %s to %s", reflect.TypeOf(v), "map[string]interface{}"))
+		}
+		res[key] = v
+	}
+	return res, nil
 }

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/vahidmostofi/acfg/internal/autocfg"
+	"github.com/vahidmostofi/acfg/internal/configuration"
 	"io"
 	"io/ioutil"
 	v1 "k8s.io/api/apps/v1"
@@ -86,7 +86,7 @@ func (k *K8s) Deploy(ctx context.Context, reader io.Reader) error{
 	return nil
 }
 
-func (k *K8s) UpdateConfigurationsAndWait(ctx context.Context, config map[string]*autocfg.Configuration) error{
+func (k *K8s) UpdateConfigurationsAndWait(ctx context.Context, config map[string]*configuration.Configuration) error{
 
 	wg := &sync.WaitGroup{}
 
