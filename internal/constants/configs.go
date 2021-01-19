@@ -42,7 +42,7 @@ const ResultsDirectory = "Results.Directory" // TODO do we need this? shouldn't 
 const TargetSystemWorkloadName = "TargetSystem.Workload.Name"
 
 const WaitTimesWaitAfterConfigIsDeployedSeconds = "WaitTimes.WaitAfterConfigIsDeployedSeconds"
-const WaitTimesLoadTestDurationSeconds = "WaitTimes.LoadTestDuration"
+const WaitTimesLoadTestDurationSeconds = "WaitTimes.LoadTestDurationSeconds"
 
 const TestName = "TestName"
 

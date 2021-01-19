@@ -92,7 +92,7 @@ func (k *K8s) UpdateConfigurationsAndWait(ctx context.Context, config map[string
 
 	deploymentsClient := k.clientSet.AppsV1().Deployments(k.namespace)
 	for resourceName, c := range config{
-		log.Debug("UpdateConfigurationsAndWait() updating deployment", resourceName)
+		log.Debug("UpdateConfigurationsAndWait() updating deployment ", resourceName)
 		deploymentObj, getErr := deploymentsClient.Get(ctx, resourceName, metav1.GetOptions{})
 		if getErr != nil{
 			errors.Wrap(getErr, fmt.Sprintf("failed to get latest version of Deployment: %s", resourceName))
@@ -115,7 +115,7 @@ func (k *K8s) UpdateConfigurationsAndWait(ctx context.Context, config map[string
 
 		// patch environment variables
 		// TODO
-		log.Debug("UpdateConfigurationsAndWait() calling updateDeployment deployment", resourceName)
+		log.Debug("UpdateConfigurationsAndWait() calling updateDeployment deployment ", resourceName)
 		err := k.updateDeployment(ctx, deploymentObj)
 		if err != nil{
 			return errors.Wrapf(err, "error while updating deployment for %s", deploymentObj.Name)
@@ -156,21 +156,29 @@ func (k *K8s) updateDeployment(ctx context.Context, targetDeployment *v1.Deploym
 	return errors.Wrapf(retryErr, "error while updating deployment: %s", targetDeployment.Name)
 }
 
-
+// waitDeploymentHaveDesiredCondition only works with a single container ! //TODO
 func waitDeploymentHaveDesiredCondition (ctx context.Context, deploymentClient v12.DeploymentInterface, desiredReason string, deploymentName string, wg *sync.WaitGroup, interval time.Duration){
+	log.Debugf("wating for container with conditoin %s for deployment %s", desiredReason, deploymentName)
 	wait.Poll(interval, 50*time.Minute, func() (bool, error){
-		var isNewReplicaSetAvailable bool
+		var flag bool
 		dep, err := deploymentClient.Get(ctx, deploymentName, metav1.GetOptions{})
 		if err != nil{
 			panic(err)
 		}
 
 		for _,c := range dep.Status.Conditions {
-			isNewReplicaSetAvailable = c.Reason == desiredReason
+			flag = c.Reason == desiredReason
+			if flag{
+				break
+			}
+		}
+		if flag{
+			log.Debugf("container with desired condition %s found for deployment %s", desiredReason, deploymentName)
 		}
 
-		return isNewReplicaSetAvailable, nil
+		return flag, nil
 	})
+	log.Debugf("done wating for container with condition %s for deployment %s", desiredReason, deploymentName)
 	if wg != nil{
 		wg.Done()
 	}

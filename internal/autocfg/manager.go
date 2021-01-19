@@ -85,6 +85,7 @@ func NewAutoConfigManager(args *AutoConfigManagerArgs) (*AutoConfigManager,error
 }
 
 func (a *AutoConfigManager) aggregatedData(startTime, finishTime int64) (*aggregators.AggregatedData, error){
+	log.Debugf("aggregating data")
 	var err error
 
 	// response times
@@ -197,14 +198,14 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 			}
 		}
 		// else: (no aggregated data is found in the ConfigDatabase)
-		if iterInfo.AggregatedData != nil{
+		if iterInfo.AggregatedData == nil{
 
 			// deploy the new configuration and wait for it to be deployed
 			log.Infof("AutoConfigManager.Run() deploying the configuration")
 			a.clusterManager.UpdateConfigurationsAndWait(ctx, iterInfo.Configuration)
 			log.Infof("AutoConfigManager.Run() configurations deployed and ready")
 
-			log.Debugf("AutoConfigManager.Run() waiting %d seconds", a.waitTimes.WaitAfterConfigIsDeployed)
+			log.Infof("AutoConfigManager.Run() waiting %s.", a.waitTimes.WaitAfterConfigIsDeployed.String())
 			time.Sleep(a.waitTimes.WaitAfterConfigIsDeployed)
 
 			iterInfo.StartTime = time.Now().Unix()
@@ -214,16 +215,15 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 			// TODO starting the load generator
 
 			// wait for the specific duration and then stop the load generator
-			log.Infof("AutoConfigManager.Run() load generator is started, waiting %d seconds", a.waitTimes.LoadTestDuration)
+			log.Infof("AutoConfigManager.Run() load generator is started, waiting %s while load generator is running.", a.waitTimes.LoadTestDuration.String())
 			time.Sleep(a.waitTimes.LoadTestDuration)
 			// TODO stopping the load generator
 
+			iterInfo.FinishTime = time.Now().Unix()
 			iterInfo.AggregatedData , err = a.aggregatedData(iterInfo.StartTime, iterInfo.FinishTime)
 			if err != nil{
 				return errors.Wrapf(err, "error while aggregating data from %d to %d", iterInfo.StartTime, iterInfo.FinishTime)
 			}
-
-			iterInfo.FinishTime = time.Now().Unix()
 
 			// store the aggregated data
 			err = a.configDatabase.Store(hashCode, iterInfo.AggregatedData)
