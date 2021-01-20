@@ -1,9 +1,10 @@
-package autoconfigurer
+package strategies
 
 import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/vahidmostofi/acfg/internal/autocfg"
+	"github.com/vahidmostofi/acfg/internal/aggregators"
+	"github.com/vahidmostofi/acfg/internal/configuration"
 	"github.com/vahidmostofi/acfg/internal/workload"
 )
 
@@ -33,22 +34,24 @@ func (ct *CPUThreshold) GetName() string{
 	return "CPUThreshold"
 }
 
-func (ct *CPUThreshold) GetInitialConfiguration(workload *workload.Workload, aggData *autocfg.AggregatedData) (map[string]*autocfg.Configuration, error){
-	config := make(map[string]*autocfg.Configuration)
-	for _,endpoint := range ct.endpoints{
-		config[endpoint].ReplicaCount = int64Ptr(1)
-		config[endpoint].CPU = int64Ptr(1000)
-		config[endpoint].Memory = int64Ptr(512)
-		config[endpoint].ResourceType = "Deployment"
+func (ct *CPUThreshold) GetInitialConfiguration(workload *workload.Workload, aggData *aggregators.AggregatedData) (map[string]*configuration.Configuration, error){
+	config := make(map[string]*configuration.Configuration)
+	for _,resource := range ct.resources{
+		config[resource] = &configuration.Configuration{}
+		config[resource].ReplicaCount = int64Ptr(1)
+		config[resource].CPU = int64Ptr(ct.initialCPU)
+		config[resource].Memory = int64Ptr(ct.initialMemory)
+		config[resource].ResourceType = "Deployment"
 	}
 
 	return config, nil
 }
 
-func (ct *CPUThreshold) ConfigureNextStep(currentConfig map[string]*autocfg.Configuration, workload *workload.Workload, aggData *autocfg.AggregatedData) (map[string]*autocfg.Configuration, bool, error){
+func (ct *CPUThreshold) ConfigureNextStep(currentConfig map[string]*configuration.Configuration, workload *workload.Workload, aggData *aggregators.AggregatedData) (map[string]*configuration.Configuration, bool, error){
 	isChanged := false
 	var err error
-	newConfig := make(map[string]*autocfg.Configuration)
+	newConfig := make(map[string]*configuration.Configuration)
+
 
 	for _, resource := range ct.resources{
 		newConfig[resource] = currentConfig[resource].DeepCopy()
@@ -62,9 +65,11 @@ func (ct *CPUThreshold) ConfigureNextStep(currentConfig map[string]*autocfg.Conf
 		}
 		if whatToCompare > ct.utilizationThreshold{
 			newCount := int64Ptr(*newConfig[resource].ReplicaCount + 1)
-			log.Infof(ct.GetName(), "ConfigureNextStep() CPU utilization for %s is %f is more than %f changing replica from %d to %d", resource, whatToCompare, ct.utilizationThreshold, *newConfig[resource].ReplicaCount, *newCount)
+			log.Infof("%s.ConfigureNextStep() CPU utilization for %s is %f is more than %f changing replica from %d to %d", ct.GetName(), resource, whatToCompare, ct.utilizationThreshold, *newConfig[resource].ReplicaCount, *newCount)
 			newConfig[resource].ReplicaCount = newCount
 			isChanged = true
+		}else{
+			log.Infof("%s.ConfigureNextStep() CPU utilization for %s is %f is less than %f not changing replica from %d", ct.GetName(), resource, whatToCompare, ct.utilizationThreshold, *newConfig[resource].ReplicaCount)
 		}
 	}
 

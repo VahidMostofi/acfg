@@ -1,32 +1,57 @@
 package constants
 
-const CONFIG_INFLUXDB_URL = "CONFIG_INFLUXDB_URL" // there should be more than one bucket for different aggregators
-const CONFIG_INFLUXDB_TOKEN = "CONFIG_INFLUXDB_TOKEN" // there should be more than one bucket for different aggregators
-const CONFIG_INFLUXDB_BUCKET = "CONFIG_INFLUXDB_BUCKET" // there should be more than one bucket for different aggregators
-const CONFIG_INFLUXDB_ORG = "CONFIG_INFLUXDB_ORG" // there should be more than one bucket for different aggregators
+const VersionCode = "VersionCode"
 
-const CONFIG_RESOURCE_FILTERS = "CONFIG_RESOURCE_FILTERS" // needs to be map[string]map[string]interface{}
-const CONFIG_ENDPOINTS_FILTERS = "CONFIG_ENDPOINTS_FILTERS" // needs to be map[string]map[string]interface{}
+const EndpointsAggregatorType = "EndpointsAggregator.Type"
+const EndpointsAggregatorArgsURL = "EndpointsAggregator.Args.URL"
+const EndpointsAggregatorArgsToken = "EndpointsAggregator.Args.Token"
+const EndpointsAggregatorArgsBucket = "EndpointsAggregator.Args.Bucket"
+const EndpointsAggregatorArgsOrganization = "EndpointsAggregator.Args.Organization"
 
-const CONFIG_ENDPOINTS_2_RESOURCES = "CONFIG_ENDPOINTS_2_RESOURCES"
-const CONFIG_SYSTEM_STRUCTURE_AGGREGATOR_TYPE = "CONFIG_SYSTEM_STRUCTURE_AGGREGATOR_TYPE" // predefined
+const ResourceUsageAggregatorType = "ResourceUsageAggregator.Type"
+const ResourceUsageAggregatorArgsURL = "ResourceUsageAggregator.Args.URL"
+const ResourceUsageAggregatorArgsToken = "ResourceUsageAggregator.Args.Token"
+const ResourceUsageAggregatorArgsBucket = "ResourceUsageAggregator.Args.Bucket"
+const ResourceUsageAggregatorArgsOrganization = "ResourceUsageAggregator.Args.Organization"
 
-const CONFIG_VERSION_CODE = "CONFIG_VERSION_CODE"
+const WorkloadAggregatorType = "WorkloadAggregator.Type"
+const WorkloadAggregatorArgsURL = "WorkloadAggregator.Args.URL"
+const WorkloadAggregatorArgsToken = "WorkloadAggregator.Args.Token"
+const WorkloadAggregatorArgsBucket = "WorkloadAggregator.Args.Bucket"
+const WorkloadAggregatorArgsOrganization = "WorkloadAggregator.Args.Organization"
 
-const CONFIG_SYSTEM_NAMESPACE = "CONFIG_SYSTEM_NAMESPACE"
-const CONFIG_SYSTEM_DEPLOYMENTS_TO_MANAGE = "CONFIG_SYSTEM_DEPLOYMENTS_TO_MANAGE" // []string
+const SystemStructureAggregatorType = "SystemStructureAggregator.Type"
+const SystemStructureAggregatorEndpoints2Resources = "SystemStructureAggregator.Endpoints2Resources"
 
-const CONFIG_VALIDATION_TOTAL_MEMORY = "CONFIG_VALIDATION_TOTAL_MEMORY"
-const CONFIG_VALIDATION_TOTAL_CPU = "CONFIG_VALIDATION_TOTAL_CPU"
+const ResourceFilters = "ResourceFilters"   // needs to be map[string]map[string]interface{}
+const EndpointsFilters = "EndpointsFilters" // needs to be map[string]map[string]interface{}
 
-const CONFIG_VALIDATION_USE_CACHE = "CONFIG_VALIDATION_USE_CACHE" // bool
-const CONFIG_CONFIGURATION_DATABASE_TYPE = "CONFIG_CONFIGURATION_DATABASE_TYPE"
-const CONFIG_CONFIGURATION_DATABASE_S3_REGION = "CONFIG_CONFIGURATION_DATABASE_S3_REGION"
-const CONFIG_CONFIGURATION_DATABASE_S3_BUCKET = "CONFIG_CONFIGURATION_DATABASE_S3_BUCKET"
+const TargetSystemNamespace = "TargetSystem.Namespace"
+const TargetSystemDeploymentsToManage = "TargetSystem.DeploymentsToManage" // []string
 
-const CONFIG_WAIT_TIMES = "CONFIG_WAIT_TIMES" // of type internal/autocfg/manager.go/WaitTimes struct
+const ConfigurationValidationTotalMemory = "ConfigurationValidation.TotalMemory"
+const ConfigurationValidationTotalCpu = "ConfigurationValidation.TotalCPU"
 
-const CONFIG_ENDPOINTS_AGGREGATOR_TYPE = "CONFIG_ENDPOINTS_AGGREGATOR_TYPE"
-const CONFIG_USAGE_AGGREGATOR_TYPE = "CONFIG_USAGE_AGGREGATOR_TYPE"
+const AutoConfigureUseCache = "AutoConfigure.UseCache" // bool
+const AutoConfigureCacheDatabaseType = "AutoConfigure.CacheDatabaseType"
+const AutoConfigureCacheS3Region = "AutoConfigure.CacheS3Region"
+const AutoConfigureCacheS3Bucket = "AutoConfigure.CacheS3Bucket"
 
-const CONFIG_RESULTS_PREFIX_PATH = "constants.CONFIG_RESULTS_PREFIX_PATH" // TODO do we need this? shouldn't we move to s3?
+const ResultsDirectory = "Results.Directory" // TODO do we need this? shouldn't we move to s3?
+
+const TargetSystemWorkloadName = "TargetSystem.Workload.Name"
+
+const WaitTimesWaitAfterConfigIsDeployedSeconds = "WaitTimes.WaitAfterConfigIsDeployedSeconds"
+const WaitTimesLoadTestDurationSeconds = "WaitTimes.LoadTestDurationSeconds"
+const WaitTimesWaitAfterLoadGeneratorIsDoneSeconds = "WaitTimes.WaitAfterLoadGeneratorIsDoneSeconds"
+
+const TestName = "TestName"
+
+const TargetSystemWorkload = "TargetSystem.Workload"
+const TargetSystemWorkloadBody = "TargetSystem.Workload.Body"
+
+const StrategyName = "StrategyName"
+const SLAConditionsFile = "SLAConditionsFile"
+
+const LoadGeneratorType = "LoadGenerator.Type"
+const LoadGeneratorScriptPath = "LoadGenerator.ScriptPath"

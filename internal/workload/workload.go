@@ -1,6 +1,26 @@
 package workload
 
+import (
+	"fmt"
+	"github.com/spf13/viper"
+	"github.com/vahidmostofi/acfg/internal/constants"
+)
+
 type Workload map[string]int64
+
+func GetWorkload() Workload{
+	temp := viper.GetStringMap(constants.TargetSystemWorkloadBody)
+	w := make(map[string]int64)
+	for k,v := range temp{
+		w[k] = int64(v.(int))
+	}
+	return w
+}
+
+func (w *Workload) String() string{
+	return fmt.Sprintf("total:%d %v", w.GetTotalCount(), w.GetMap())
+}
+
 
 func (w *Workload) GetTotalCount() int64{
 	var total int64

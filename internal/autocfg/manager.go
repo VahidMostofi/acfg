@@ -2,26 +2,32 @@ package autocfg
 
 import (
 	"context"
+	"fmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"github.com/vahidmostofi/acfg/internal/aggregators"
 	"github.com/vahidmostofi/acfg/internal/aggregators/endpointsagg"
 	"github.com/vahidmostofi/acfg/internal/aggregators/sysstructureagg"
 	"github.com/vahidmostofi/acfg/internal/aggregators/ussageagg"
 	"github.com/vahidmostofi/acfg/internal/aggregators/workloadagg"
-	"github.com/vahidmostofi/acfg/internal/autocfg/autoconfigurer"
-	"github.com/vahidmostofi/acfg/internal/constants"
-	"github.com/vahidmostofi/acfg/internal/dataaccess"
 	"github.com/vahidmostofi/acfg/internal/clustermanager"
+	"github.com/vahidmostofi/acfg/internal/configuration"
+	"github.com/vahidmostofi/acfg/internal/constants"
+	"github.com/vahidmostofi/acfg/internal/loadgenerator"
+	"github.com/vahidmostofi/acfg/internal/strategies"
 	"github.com/vahidmostofi/acfg/internal/workload"
 	"gopkg.in/yaml.v2"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
-type WaitTimes struct{
-	WaitAfterConfigIsDeployed time.Duration //TODO
-	LoadTestDuration time.Duration //TODO
+type WaitTimes struct{ // if anything is added to this, you need to update starter which creates this object from config files
+	WaitAfterConfigIsDeployed time.Duration
+	LoadTestDuration time.Duration
+	WaitAfterLoadGeneratorIsDone time.Duration
 }
 
 type ConfigurationValidation struct{
@@ -30,33 +36,37 @@ type ConfigurationValidation struct{
 }
 
 type AutoConfigManager struct{
-	clusterManager clustermanager.ClusterManager
+	clusterManager          clustermanager.ClusterManager
 	configurationValidation ConfigurationValidation
-	usingHash bool
-	configDatabase dataaccess.ConfigDatabase
-	waitTimes WaitTimes
-	endpointsAggregator *endpointsagg.EndpointsAggregator
-	systemStructure *sysstructureagg.SystemStructure
-	usageAggregator *ussageagg.UsageAggregator
-	workloadAggregator workloadagg.WorkloadAggregator
-	endpointsFilter map[string]map[string]interface{}
-	storePathPrefix string
-	cancelFunc context.CancelFunc
+	usingHash               bool
+	configDatabase          aggregators.ConfigDatabase
+	waitTimes               WaitTimes
+	endpointsAggregator     *endpointsagg.EndpointsAggregator
+	systemStructure         *sysstructureagg.SystemStructure
+	usageAggregator         *ussageagg.UsageAggregator
+	workloadAggregator      workloadagg.WorkloadAggregator
+	endpointsFilter         map[string]map[string]interface{}
+	storePathPrefix         string
+	cancelFunc              context.CancelFunc
+	sla						*SLA
+	lg 						*loadgenerator.K6LocalLoadGenerator
 }
 
 type AutoConfigManagerArgs struct{
-	Namespace string
+	Namespace           string
 	DeploymentsToManage []string
-	CfgValidation ConfigurationValidation
-	UsingHash bool
-	ConfigDatabase dataaccess.ConfigDatabase
-	WaitTimes WaitTimes
+	CfgValidation       ConfigurationValidation
+	UsingHash           bool
+	ConfigDatabase      aggregators.ConfigDatabase
+	WaitTimes           WaitTimes
 	EndpointsAggregator *endpointsagg.EndpointsAggregator
-	SystemStructure *sysstructureagg.SystemStructure
-	UsageAggregator *ussageagg.UsageAggregator
-	WorkloadAggregator workloadagg.WorkloadAggregator
-	EndpointsFilter map[string]map[string]interface{}
-	StorePathPrefix string
+	SystemStructure     *sysstructureagg.SystemStructure
+	UsageAggregator     *ussageagg.UsageAggregator
+	WorkloadAggregator  workloadagg.WorkloadAggregator
+	EndpointsFilter     map[string]map[string]interface{}
+	StorePathPrefix     string
+	SLA 				*SLA
+	LoadGenerator		*loadgenerator.K6LocalLoadGenerator
 }
 
 func NewAutoConfigManager(args *AutoConfigManagerArgs) (*AutoConfigManager,error){
@@ -77,16 +87,18 @@ func NewAutoConfigManager(args *AutoConfigManagerArgs) (*AutoConfigManager,error
 		workloadAggregator: args.WorkloadAggregator,
 		endpointsFilter: args.EndpointsFilter,
 		storePathPrefix: args.StorePathPrefix,
-
+		sla: args.SLA,
+		lg: args.LoadGenerator,
 	}
 	return a,nil
 }
 
-func (a *AutoConfigManager) aggregatedData(startTime, finishTime int64) (*AggregatedData, error){
+func (a *AutoConfigManager) aggregatedData(startTime, finishTime int64) (*aggregators.AggregatedData, error){
+	log.Debugf("aggregating data")
 	var err error
 
 	// response times
-	ag := &AggregatedData{}
+	ag := &aggregators.AggregatedData{}
 
 	// Response Times
 	ag.ResponseTimes, err = a.endpointsAggregator.GetEndpointsResponseTimes(startTime, finishTime)
@@ -114,7 +126,7 @@ func (a *AutoConfigManager) aggregatedData(startTime, finishTime int64) (*Aggreg
 	return ag, nil
 }
 
-func (a *AutoConfigManager) isConfigurationValid(cs map[string]*Configuration) (string,bool){
+func (a *AutoConfigManager) isConfigurationValid(cs map[string]*configuration.Configuration) (string,bool){
 	var totalCPU int64
 	var totalMemory int64
 	for _,config := range cs{
@@ -126,16 +138,21 @@ func (a *AutoConfigManager) isConfigurationValid(cs map[string]*Configuration) (
 	if totalMemory > a.configurationValidation.TotalAvailableMemory && a.configurationValidation.TotalAvailableMemory > 0 {
 		return "not enough memory", false
 	}
-
-	if totalCPU > a.configurationValidation.TotalAvailableCPU && a.configurationValidation.TotalAvailableCPU > 0 {
-		return "not enough CPU", false
+	// CPU in config should be times 1000
+	maxAvailableCPU := a.configurationValidation.TotalAvailableCPU * 1000
+	if totalCPU > maxAvailableCPU && a.configurationValidation.TotalAvailableCPU > 0 {
+		return fmt.Sprintf("not enough CPU: %d vs %d", totalCPU, maxAvailableCPU), false
 	}
-
 	return "", true
 }
 
 func (a *AutoConfigManager) storeTestInformation(test *TestInformation) error{
-	filePath := a.storePathPrefix + test.Name // TODO clean, concat
+	a.storePathPrefix = strings.ReplaceAll(a.storePathPrefix, "$STRATEGY.NAME", viper.GetString(constants.StrategyName))
+	err := os.MkdirAll(filepath.Clean(a.storePathPrefix), os.ModePerm)
+	if err != nil{
+		return errors.Wrapf(err, "there was error creating necessary directories.")
+	}
+	filePath := filepath.Join(filepath.Clean(a.storePathPrefix), test.Name + ".yaml") // TODO is it always local? no s3?
 	log.Infof("saving file at %s", filePath)
 	fo, err := os.Create(filePath)
 	if err != nil{
@@ -147,16 +164,17 @@ func (a *AutoConfigManager) storeTestInformation(test *TestInformation) error{
 }
 
 
-func (a *AutoConfigManager) Run(testName string, autoConfigAgent autoconfigurer.AutoConfigurationAgent, inputWorkload *workload.Workload) error {
+func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strategies.Strategy, inputWorkload *workload.Workload) error {
 	ctx, cnF := context.WithCancel(context.Background())
 	a.cancelFunc = cnF
 
 	testInformation := &TestInformation{
 		Name: testName,
-		AutoconfiguringApproach:autoConfigAgent.GetName(),
+		AutoconfiguringApproach:autoConfigStrategyAgent.GetName(),
 		Iterations: make([]*IterationInformation,0),
 		InputWorkload: inputWorkload,
-		VersionCode: viper.GetString(constants.CONFIG_VERSION_CODE),
+		VersionCode: viper.GetString(constants.VersionCode),
+		AllSettings: viper.AllSettings(),
 	}
 
 	log.Debug("AutoConfigManager.Run() waiting for all deployments to be available ")
@@ -165,7 +183,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigAgent autoconfigurer.
 
 	// get the currentConfiguration from aut configuration . initialConfiguration()
 	log.Debug("AutoConfigManager.Run() getting configuration with GetInitialConfiguration()")
-	currentConfig, err := autoConfigAgent.GetInitialConfiguration(inputWorkload, nil) // TODO aggData is nil
+	currentConfig, err := autoConfigStrategyAgent.GetInitialConfiguration(inputWorkload, nil) // TODO aggData is nil
 	if err != nil{
 		return errors.Wrap(err, "error getting InitialConfiguration")
 	}
@@ -188,40 +206,47 @@ func (a *AutoConfigManager) Run(testName string, autoConfigAgent autoconfigurer.
 				return errors.Wrapf(err, "error while retrieving configuration with hash %s", hashCode)
 			}
 			if ag == nil {
-				log.Debugf("AutoConfigManager.Run() no aggregatedData is found with hash code %s", hashCode)
+				log.Infof("AutoConfigManager.Run() no aggregatedData is found with hash code %s", hashCode)
 			} else {
-				log.Debugf("AutoConfigManager.Run() aggregatedData is found with hash code %s", hashCode)
+				log.Infof("AutoConfigManager.Run() aggregatedData is found with hash code %s", hashCode)
 				iterInfo.AggregatedData = ag
 			}
 		}
 		// else: (no aggregated data is found in the ConfigDatabase)
-		if iterInfo.AggregatedData != nil{
+		if iterInfo.AggregatedData == nil{
 
 			// deploy the new configuration and wait for it to be deployed
+			log.Infof("AutoConfigManager.Run() checking configuration before deploying")
+			reason, ok := a.isConfigurationValid(iterInfo.Configuration)
+			if !ok{
+				log.Infof("breaking the loop because configuration is not valid: %s", reason)
+				break
+			}
 			log.Infof("AutoConfigManager.Run() deploying the configuration")
 			a.clusterManager.UpdateConfigurationsAndWait(ctx, iterInfo.Configuration)
 			log.Infof("AutoConfigManager.Run() configurations deployed and ready")
 
-			log.Debugf("AutoConfigManager.Run() waiting %d seconds", a.waitTimes.WaitAfterConfigIsDeployed)
+			log.Infof("AutoConfigManager.Run() waiting %s.", a.waitTimes.WaitAfterConfigIsDeployed.String())
 			time.Sleep(a.waitTimes.WaitAfterConfigIsDeployed)
 
 			iterInfo.StartTime = time.Now().Unix()
 
 			// start the load generator and wait a few seconds for it
 			log.Debugf("AutoConfigManager.Run() load generator is starting")
-			// TODO starting the load generator
+			a.lg.Start(inputWorkload, nil)
 
 			// wait for the specific duration and then stop the load generator
-			log.Infof("AutoConfigManager.Run() load generator is started, waiting %d seconds", a.waitTimes.LoadTestDuration)
+			log.Infof("AutoConfigManager.Run() load generator is started, waiting %s while load generator is running.", a.waitTimes.LoadTestDuration.String())
 			time.Sleep(a.waitTimes.LoadTestDuration)
-			// TODO stopping the load generator
+			a.lg.Stop()
 
+			iterInfo.FinishTime = time.Now().Unix()
+			log.Infof("AutoConfigManager.Run() load generator is done, waiting %s.", a.waitTimes.WaitAfterLoadGeneratorIsDone.String())
+			time.Sleep(a.waitTimes.WaitAfterLoadGeneratorIsDone)
 			iterInfo.AggregatedData , err = a.aggregatedData(iterInfo.StartTime, iterInfo.FinishTime)
 			if err != nil{
 				return errors.Wrapf(err, "error while aggregating data from %d to %d", iterInfo.StartTime, iterInfo.FinishTime)
 			}
-
-			iterInfo.FinishTime = time.Now().Unix()
 
 			// store the aggregated data
 			err = a.configDatabase.Store(hashCode, iterInfo.AggregatedData)
@@ -230,26 +255,51 @@ func (a *AutoConfigManager) Run(testName string, autoConfigAgent autoconfigurer.
 			}
 		}
 
+		// at this point we have the aggregated data, we either found it with cache or by running the load generator
+		// so we print some info to the log about this iteration and the aggregated data in it.
+		for endpointName, responseTimes := range iterInfo.AggregatedData.ResponseTimes{
+			log.Infof("response times for %s: %s", endpointName, responseTimes.String())
+		}
+		log.Infof("workload that happend during this iteration: %s", iterInfo.AggregatedData.HappenedWorkload.String())
+
 		testInformation.Iterations = append(testInformation.Iterations, iterInfo)
-		a.storeTestInformation(testInformation)
+		err = a.storeTestInformation(testInformation)
+		if err != nil{
+			return errors.Wrapf(err, "error while saving aggregated results.")
+		}
 
 		// pass all these information(data+) to the auto configuring agent and get the new configuration from it
-		currentConfig, isDone, err := autoConfigAgent.ConfigureNextStep(currentConfig, inputWorkload, iterInfo.AggregatedData)
+		currentConfig, isChanged, err := autoConfigStrategyAgent.ConfigureNextStep(iterInfo.Configuration, inputWorkload, iterInfo.AggregatedData)
+		isDone := !isChanged
+		doneReason := ""
+		iterInfo.Configuration = currentConfig
 		if err != nil{
 			return errors.Wrap(err, "error while getting next configuration")
 		}
 
-		if reason, isValid := a.isConfigurationValid(currentConfig); !isValid{
+		if reason, isValid := a.isConfigurationValid(iterInfo.Configuration); !isValid{
 			log.Infof("AutoConfigManager.Run() the new configuration is not valid because: %s; Breaking out of the loop", reason)
 			break
 		}
 
 		if isDone{
+			doneReason += "the strategy agent is done."
 			log.Infof("AutoConfigManager.Run() the autoconfiguring agent thinks we are done")
 			break
 		}
 	}
-
+	// TODO store the reason we are going out of the loop, cant do better? the config is not valid? we are done?
 	// TODO we should listen to signals and undeploy everything. Graceful shutdown.
 	return nil
+}
+
+// TODO use this!
+func CheckCondition(data *aggregators.AggregatedData, condition Condition) (bool, error){
+	if condition.Type == "ResponseTime"{
+		value := condition.GetComputeFunction()(*data.ResponseTimes[condition.EndpointName])
+		if value <= condition.Threshold{
+			return true, nil
+		}
+	}
+	return false, nil
 }

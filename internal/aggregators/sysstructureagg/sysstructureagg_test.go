@@ -14,9 +14,9 @@ func TestSystemStructure_GetEndpoints2Resources(t *testing.T) {
 	e2r["get-book"] = []string{"gateway", "books"}
 	e2r["edit-book"] = []string{"gateway", "books"}
 
-	viper.Set(constants.CONFIG_ENDPOINTS_2_RESOURCES, e2r)
+	viper.Set(constants.SystemStructureAggregatorEndpoints2Resources, e2r)
 
-	ss, err := NewSystemStructure("predefined")
+	ss, err := NewSystemStructure(constants.SystemStructureAggregatorType, e2r)
 	if err != nil{
 		t.Log(err)
 		t.Fail()
