@@ -18,6 +18,9 @@ func GetWorkload() Workload{
 }
 
 func (w *Workload) String() string{
+	if w == nil{
+		return "workload is nil"
+	}
 	return fmt.Sprintf("total:%d %v", w.GetTotalCount(), w.GetMap())
 }
 
