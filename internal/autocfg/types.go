@@ -14,6 +14,7 @@ import (
 	"strings"
 )
 
+//TODO add more args to this hash function. probably make it work with ...
 func GetHash(c map[string]*configuration.Configuration, version string) (string,error){
 	b, err := json.Marshal(c)
 	if err != nil{
@@ -39,6 +40,7 @@ type TestInformation struct{
 	AutoconfiguringApproach string 			`yaml:"autoConfigApproach"`
 	Iterations []*IterationInformation 		`yaml:"iterations"`
 	InputWorkload *workload.Workload 		`yaml:"workload"`
+	AllSettings	map[string]interface{}		`yaml:"allSettings"`
 }
 
 type SLA struct{
