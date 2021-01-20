@@ -11,6 +11,8 @@ type SLA struct{
 	Conditions []Condition
 }
 
+const SLAConditionTypeResponseTime = "ResponseTime"
+
 type Condition struct{
 	Type string					`yaml:"type"`
 	EndpointName string			`yaml:"endpointName"`

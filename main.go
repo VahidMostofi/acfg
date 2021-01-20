@@ -13,6 +13,7 @@ import (
 
 func main() {
 	cmd.Execute()
+	// TODO load generator feedback to iteration
 	// TODO this needs to be moved where we actually create CPUThreshold strategy approach
 	//log.SetReportCaller(true)
 	log.SetLevel(log.DebugLevel)
@@ -21,7 +22,8 @@ func main() {
 		log.Panic(err.Error())
 		os.Exit(1)
 	}
-	autoConfigAgent, err := strategies.NewCPUThreshold("mean", 50, []string{"login","get-book","edit-book"}, []string{"auth","books","gateway"},201, 256)
+	//autoConfigAgent, err := strategies.NewCPUThreshold("mean", 50, []string{"login","get-book","edit-book"}, []string{"auth","books","gateway"},202, 256)
+	autoConfigAgent, err := strategies.NewBNV1(100, []string{"login","get-book","edit-book"}, []string{"auth","books","gateway"},202, 256)
 	viper.Set(constants.StrategyName, "CPUThreshold")
 	if err != nil{
 		panic(err)
