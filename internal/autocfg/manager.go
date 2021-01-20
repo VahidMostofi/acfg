@@ -191,20 +191,24 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 	if err != nil{
 		return errors.Wrap(err, "error getting InitialConfiguration")
 	}
-
+	iterationId := 0
 	for{
+		iterationId++
+		log.Info("starting iteration %d", iterationId)
 		// one iteration starts here
 		iterInfo := &IterationInformation{
 			Configuration: currentConfig,
 			AggregatedData: nil,
-		}
-		// get the hash of the configuration; if the hash and its value already exists in the database && we are using hash
-		hashCode,err := GetHash(iterInfo.Configuration, testInformation.VersionCode)
-		if err != nil{
-			return errors.Wrap(err,"error while getting hash code from configuration")
+			LoadGeneratorFeedback: nil,
 		}
 
 		if a.usingHash {
+			// get the hash of the configuration; if the hash and its value already exists in the database && we are using hash
+			hashCode,err := GetHash(iterInfo.Configuration, testInformation.VersionCode)
+			if err != nil{
+				return errors.Wrap(err,"error while getting hash code from configuration")
+			}
+
 			ag, err := a.configDatabase.Retrieve(hashCode)
 			if err != nil {
 				return errors.Wrapf(err, "error while retrieving configuration with hash %s", hashCode)
@@ -243,6 +247,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 			log.Infof("AutoConfigManager.Run() load generator is started, waiting %s while load generator is running.", a.waitTimes.LoadTestDuration.String())
 			time.Sleep(a.waitTimes.LoadTestDuration)
 			a.lg.Stop()
+			iterInfo.LoadGeneratorFeedback, err = a.lg.GetFeedback()
 
 			iterInfo.FinishTime = time.Now().Unix()
 			log.Infof("AutoConfigManager.Run() load generator is done, waiting %s.", a.waitTimes.WaitAfterLoadGeneratorIsDone.String())
@@ -252,10 +257,17 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 				return errors.Wrapf(err, "error while aggregating data from %d to %d", iterInfo.StartTime, iterInfo.FinishTime)
 			}
 
-			// store the aggregated data
-			err = a.configDatabase.Store(hashCode, iterInfo.AggregatedData)
-			if err != nil{
-				return errors.Wrapf(err, "error while storing aggregated data for hash code %s", hashCode)
+			if a.usingHash{
+				hashCode,err := GetHash(iterInfo.Configuration, testInformation.VersionCode)
+				if err != nil{
+					return errors.Wrap(err,"error while getting hash code from configuration")
+				}
+
+				// store the aggregated data
+				err = a.configDatabase.Store(hashCode, iterInfo.AggregatedData)
+				if err != nil{
+					return errors.Wrapf(err, "error while storing aggregated data for hash code %s", hashCode)
+				}
 			}
 		}
 

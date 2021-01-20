@@ -13,6 +13,7 @@ import (
 
 //TODO add more args to this hash function. probably make it work with ...
 func GetHash(c map[string]*configuration.Configuration, version string) (string,error){
+	panic("you need to add workload and name and system and other stuff to this!")
 	b, err := json.Marshal(c)
 	if err != nil{
 		return "", errors.Wrap(err, "cant convert configuration to json")
@@ -29,6 +30,7 @@ type IterationInformation struct{
 	StartTime int64							`yaml:"startTime"`
 	FinishTime int64						`yaml:"finishTime"`
 	AggregatedData *aggregators.AggregatedData			`yaml:"aggregatedData"`
+	LoadGeneratorFeedback map[string]interface{} `yaml:"loadGeneratorFeedback"`
 }
 
 type TestInformation struct{

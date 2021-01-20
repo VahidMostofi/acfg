@@ -2,8 +2,11 @@ package configuration
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 )
+
+const ResourceTypeDeployment = "Deployment"
 
 type Configuration struct{
 	ResourceType string
@@ -15,6 +18,13 @@ type Configuration struct{
 
 func (c *Configuration) String() string{
 	return fmt.Sprintf("%s: replica: %d, cpu: %d, memory: %dmb, envs: %v", c.ResourceType, *c.ReplicaCount, *c.CPU, *c.Memory, c.EnvironmentValues)
+}
+
+func (c *Configuration) UpdateEqualWithNewCPUValue(newCPU int64, maxCPUPerReplica int64){
+	replicaCount := int64(math.Ceil(float64(newCPU) / float64(maxCPUPerReplica)))
+	cpuPerReplica := newCPU / replicaCount
+	c.ReplicaCount = &replicaCount
+	c.CPU = &cpuPerReplica
 }
 
 func (c *Configuration) DeepCopy() *Configuration{

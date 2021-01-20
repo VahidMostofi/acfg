@@ -13,3 +13,27 @@ type AggregatedData struct{
 	SystemStructure *sysstructureagg.SystemStructure			`yaml:"structure"`
 	HappenedWorkload *workload.Workload							`yaml:"workload"`
 }
+
+func (ag *AggregatedData) GetMinMaxResourcesBasedOnCPUUtil(endpoint string) (string,string){
+	var maxValue float64 = 0
+	var minValue float64 = 1000000
+	var minName = ""
+	var maxName = ""
+
+	for _, resourceName := range ag.SystemStructure.GetEndpoints2Resources()[endpoint]{
+		cpuu := ag.CPUUtilizations[resourceName]
+		m, err := cpuu.GetMean()
+		if err != nil{
+			panic(err)
+		}
+		if minValue > m{
+			minValue = m
+			minName = resourceName
+		}
+		if maxValue < m{
+			maxValue = m
+			maxName = resourceName
+		}
+	}
+	return minName, maxName
+}

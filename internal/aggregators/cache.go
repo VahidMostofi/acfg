@@ -42,7 +42,7 @@ func(a *AWSConfigurationDatabase) Store(code string, data *AggregatedData) error
 
 func(a *AWSConfigurationDatabase) Retrieve(code string) (*AggregatedData, error){
 	log.Debugf("ConfigCache: retrieveing with %s", code)
-	key := a.directoryName + "/" + code
+	key := a.directoryName + "/" + code + ".yaml"
 	buffer, err := a.s3db.Retrieve(key)
 	if buffer == nil{
 		return nil, nil
