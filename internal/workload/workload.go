@@ -8,7 +8,7 @@ import (
 
 type Workload map[string]int64
 
-func GetWorkload() Workload{
+func GetTargetWorkload() Workload{
 	temp := viper.GetStringMap(constants.TargetSystemWorkloadBody)
 	w := make(map[string]int64)
 	for k,v := range temp{

@@ -72,13 +72,13 @@ from(bucket: "$BUCKET_NAME")
 
 		httpMethod, ok := filters[strings.ToLower("HTTP_METHOD")]
 		if !ok{
-			return nil, errors.Errorf("HTTP_METHOD must be provided as filter for GetWorkload %s", endpointName)
+			return nil, errors.Errorf("HTTP_METHOD must be provided as filter for GetTargetWorkload %s", endpointName)
 		}
 		query = strings.Replace(query, "$HTTP_METHOD", httpMethod.(string), -1)
 
 		uriRegex, ok := filters[strings.ToLower("URI_REGEX")]
 		if !ok{
-			return nil, errors.Errorf("URI_REGEX must be provided as filter for GetWorkload %s", endpointName)
+			return nil, errors.Errorf("URI_REGEX must be provided as filter for GetTargetWorkload %s", endpointName)
 		}
 		query = strings.Replace(query, "$URI_REGEX", uriRegex.(string), -1)
 

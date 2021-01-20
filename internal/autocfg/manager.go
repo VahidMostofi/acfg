@@ -194,7 +194,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 	iterationId := 0
 	for{
 		iterationId++
-		log.Info("starting iteration %d", iterationId)
+		log.Infof("starting iteration %d", iterationId)
 		// one iteration starts here
 		iterInfo := &IterationInformation{
 			Configuration: currentConfig,

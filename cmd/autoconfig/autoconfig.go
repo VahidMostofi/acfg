@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/vahidmostofi/acfg/internal/constants"
+	"github.com/vahidmostofi/acfg/internal/factory"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,12 +29,11 @@ var AutoConfigCmd = &cobra.Command{
 
 func init() {
 	cobra.OnInitialize(initConfigAutoConfigCmd)
-	AutoConfigCmd.Flags().StringVar(&cfgFile, "config", "", "config file (there is not default)")
-	AutoConfigCmd.MarkFlagRequired("config")
+	AutoConfigCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (there is not default)")
+	AutoConfigCmd.MarkPersistentFlagRequired("config")
 
-	AutoConfigCmd.Flags().StringVar(&testName, "name", "", "name of the test (there is no default)")
-	AutoConfigCmd.MarkFlagRequired("name")
-	fmt.Println("inited")
+	AutoConfigCmd.PersistentFlags().StringVar(&testName, "name", "", "name of the test (there is no default)")
+	AutoConfigCmd.MarkPersistentFlagRequired("name")
 }
 
 func initConfigAutoConfigCmd(){
@@ -57,6 +57,7 @@ func initConfigAutoConfigCmd(){
 
 		viper.Set(constants.TestName, testName)
 	}
+	fmt.Println("initConfigAutoConfigCmd Done")
 }
 
 func checkConfigFile(in string) string{
@@ -78,4 +79,28 @@ func getAbsPathOfConfigFile(in string) string {
 	}
 
 	return filepath.Join(dir, in)
+}
+
+func getEndpoints() []string{
+	t, err := factory.GetEndpointsFilters()
+	if err != nil{
+		panic(err)
+	}
+	res := make([]string, 0)
+	for s := range t{
+		res = append(res, s)
+	}
+	return res
+}
+
+func getResources() []string{
+	t, err := factory.GetResourceFilters()
+	if err != nil{
+		panic(err)
+	}
+	res := make([]string,0)
+	for s := range t{
+		res = append(res, s)
+	}
+	return res
 }
