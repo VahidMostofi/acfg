@@ -15,6 +15,7 @@ import (
 	"github.com/vahidmostofi/acfg/internal/loadgenerator"
 	"github.com/vahidmostofi/acfg/internal/sla"
 	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -273,7 +274,11 @@ func getLoadGenerator() (*loadgenerator.K6LocalLoadGenerator, error){
 		if err != nil{
 			return nil, errors.Wrap(err, "error while getting load generator")
 		}
-		lg.Reader = r
+		d, err := ioutil.ReadAll(r)
+		if err != nil {
+			return nil, errors.Wrap(err, "error while reading load generator script")
+		}
+		lg.Data = d
 		return lg, nil
 	}
 

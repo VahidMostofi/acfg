@@ -1,7 +1,6 @@
 package loadgenerator
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/vahidmostofi/acfg/internal/workload"
@@ -24,18 +23,15 @@ type LoadGenerator interface{
 }
 
 type K6LocalLoadGenerator struct {
-	Reader io.Reader
+	Data []byte
 	feedback map[string]interface{}
 }
 
 func (k *K6LocalLoadGenerator) Start(workload *workload.Workload, extra map[string]string) error {
 	log.SetLevel(log.DebugLevel)
 	log.Debug("K6LocalLoadGenerator: reading content of script for load generator")
-	t, err := ioutil.ReadAll(k.Reader)
-	scriptContent := string(t)
-	if err != nil{
-		return errors.Wrap(err, "error reading script content")
-	}
+
+	scriptContent := string(k.Data)
 
 	if extra != nil{
 		log.Debugf("K6LocalLoadGenerator: replacing extra information on script content")
@@ -57,7 +53,6 @@ func (k *K6LocalLoadGenerator) Start(workload *workload.Workload, extra map[stri
 	}
 
 	removeCmd := exec.Command("docker", "container", "rm", "-f", containerName)
-	fmt.Println(removeCmd.String())
 	err  = removeCmd.Run()
 
 	if err != nil{
@@ -65,22 +60,25 @@ func (k *K6LocalLoadGenerator) Start(workload *workload.Workload, extra map[stri
 	}
 	b, _ := removeCmd.CombinedOutput()
 
-	log.Warn("K6LocalLoadGenerator: " + string(b))
+	log.Warnf("K6LocalLoadGenerator: removing combined output: " + string(b))
 
 	cmd := exec.Command("docker", "run", "--network", "host","-d", "--rm", "--name", containerName, "-v", file.Name() + ":" + "/script.js", "loadimpact/k6",  "run", "/script.js")
-	log.Warn("K6LocalLoadGenerator: ",cmd.String())
+	log.Debug("K6LocalLoadGenerator: ",cmd.String())
 	err = cmd.Run()
 	if err != nil{
 		out, _ := cmd.CombinedOutput()
-		log.Debugf("K6LocalLoadGenerator: Failed %s",string(out))
+		log.Debugf("K6LocalLoadGenerator: failure combined output: %s",string(out))
 		return errors.Wrapf(err, "error while starting load generator %s", string(out))
 	}
 	out, _ := cmd.CombinedOutput()
-	log.Debugf("K6LocalLoadGenerator: Failed %s",string(out))
+	log.Debugf("K6LocalLoadGenerator: running combined output: %s",string(out))
+	log.Debugf("K6LocalLoadGenerator: waiting for the load generator to start.")
 	for{
+		time.Sleep(1 * time.Second)
 		url := "http://localhost:6565/v1/status"
 		resp, err := http.Get(url)
 		if err != nil{
+			log.Debugf("K6LocalLoadGenerator: error while getting response and waiting for load generator to start %s", err.Error())
 			continue
 		}
 		b, err := ioutil.ReadAll(resp.Body)
@@ -88,9 +86,9 @@ func (k *K6LocalLoadGenerator) Start(workload *workload.Workload, extra map[stri
 			panic(err)
 		}
 		if strings.Contains(string(b), "\"running\":true"){
+			log.Debugf("K6LocalLoadGenerator: based on http request the load generator is ready.")
 			break
 		}
-		time.Sleep(1 * time.Second)
 	}
 
 	return nil

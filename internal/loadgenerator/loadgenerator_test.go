@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/vahidmostofi/acfg/internal/aggregators/workloadagg"
 	"github.com/vahidmostofi/acfg/internal/constants"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"strings"
@@ -37,36 +38,39 @@ func TestK6LocalLoadGenerator_Start(t *testing.T) {
 	if err != nil{
 		panic(err)
 	}
-	k.Reader = f
+	d, err := ioutil.ReadAll(f)
+	k.Data = d
 	// ---------------------
-	err = k.Start(nil, nil)
-	if err != nil{
-		panic(err)
-		t.Fail()
-		return
+	for i := 0;i < 4; i++{
+		err = k.Start(nil, nil)
+		if err != nil{
+			panic(err)
+			t.Fail()
+			return
+		}
+		// ---------------------
+		startTime := time.Now().Unix()
+		time.Sleep(30 * time.Second)
+		finishTime := time.Now().Unix()
+		// ---------------------
+		err = k.Stop()
+		if err != nil{
+			panic(err)
+			t.Fail()
+			return
+		}
+		// ---------------------
+		time.Sleep(12 * time.Second)
+		// ---------------------
+		w, err := wa.GetWorkload(startTime, finishTime, endpointsFilters)
+		if err != nil{
+			panic(err)
+		}
+		fmt.Println(w.String())
+		// ---------------------
+		fb,_ := k.GetFeedback()
+		fmt.Println(fb["data"])
 	}
-	// ---------------------
-	startTime := time.Now().Unix()
-	time.Sleep(60 * time.Second)
-	finishTime := time.Now().Unix()
-	// ---------------------
-	err = k.Stop()
-	if err != nil{
-		panic(err)
-		t.Fail()
-		return
-	}
-	// ---------------------
-	time.Sleep(12 * time.Second)
-	// ---------------------
-	w, err := wa.GetWorkload(startTime, finishTime, endpointsFilters)
-	if err != nil{
-		panic(err)
-	}
-	fmt.Println(w.String())
-	// ---------------------
-	fb,_ := k.GetFeedback()
-	fmt.Println(fb["data"])
 }
 
 func newWorkloadAggregator()(workloadagg.WorkloadAggregator, error){
