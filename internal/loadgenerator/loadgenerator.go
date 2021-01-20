@@ -7,6 +7,7 @@ import (
 	"github.com/vahidmostofi/acfg/internal/workload"
 	"io"
 	"io/ioutil"
+	"k8s.io/apimachinery/pkg/util/json"
 	"net/http"
 	"os"
 	"os/exec"
@@ -23,12 +24,14 @@ type LoadGenerator interface{
 }
 
 type K6LocalLoadGenerator struct {
-
+	Reader io.Reader
+	feedback map[string]interface{}
 }
 
-func (k *K6LocalLoadGenerator) Start(workload *workload.Workload, reader io.Reader, extra map[string]string) error {
+func (k *K6LocalLoadGenerator) Start(workload *workload.Workload, extra map[string]string) error {
+	log.SetLevel(log.DebugLevel)
 	log.Debug("K6LocalLoadGenerator: reading content of script for load generator")
-	t, err := ioutil.ReadAll(reader)
+	t, err := ioutil.ReadAll(k.Reader)
 	scriptContent := string(t)
 	if err != nil{
 		return errors.Wrap(err, "error reading script content")
@@ -93,10 +96,31 @@ func (k *K6LocalLoadGenerator) Start(workload *workload.Workload, reader io.Read
 	return nil
 }
 
+func (k *K6LocalLoadGenerator) retrieveFeedbackBeforeStop() error{
+	resp, err := http.Get("http://localhost:6565/v1/metrics")
+	if err != nil{
+		return errors.Wrapf(err, "error while getting feedback of k6 loadgenerator (local)")
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil{
+		return errors.Wrapf(err, "error while reading response body.")
+	}
+	json.Unmarshal(body, &k.feedback)
+	return nil
+}
+
 func (k *K6LocalLoadGenerator) Stop() error {
+	log.Debug("K6LocalLoadGenerator: Getting latest metrics.")
+	err := k.retrieveFeedbackBeforeStop()
+	if err != nil{
+		return err
+	}
+	log.Debug("K6LocalLoadGenerator: Got metrics.")
 	log.Debug("K6LocalLoadGenerator: Stopping load generator.")
 	removeCmd := exec.Command("docker", "container", "rm", "-f", containerName)
-	err := removeCmd.Run()
+	err = removeCmd.Run()
 
 	if err != nil{
 		log.Warnf("K6LocalLoadGenerator: error while removing k6 load generator container for stopping %v", err)
@@ -108,7 +132,7 @@ func (k *K6LocalLoadGenerator) Stop() error {
 }
 
 func (k *K6LocalLoadGenerator) GetFeedback() (map[string]interface{}, error) {
-	return nil, nil
+	return k.feedback, nil
 }
 
 func prepareLoadGenerator(workload *workload.Workload, info map[string]interface{}) ([]byte, error){

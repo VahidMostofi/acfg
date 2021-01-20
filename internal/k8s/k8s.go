@@ -92,7 +92,7 @@ func Run(){
 			isChanged := bytes.Compare(newBytes,beforeBytes) != 0
 			fmt.Println("Compared them: isChanged", isChanged)
 			if isChanged{
-				waitDeploymentHaveDesiredCondition(context.TODO(), deploymentsClient, "ReplicaSetUpdated", targetedDeployments[s].Name,nil)
+				//waitDeploymentHaveDesiredCondition(context.TODO(), deploymentsClient, "ReplicaSetUpdated", targetedDeployments[s].Name,nil)
 			}
 
 			return updateErr

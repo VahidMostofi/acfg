@@ -1,18 +1,19 @@
-package dataaccess
+package aggregators
 
 import (
 	"bytes"
-	"github.com/pkg/errors"
-	"github.com/vahidmostofi/acfg/internal/autocfg"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
 type ConfigDatabase interface{
-	Store(code string, data *autocfg.AggregatedData) error
-	Retrieve(code string) (*autocfg.AggregatedData, error) // if there is no config with this hash returns nil,false
+	Store(code string, data *AggregatedData) error
+	Retrieve(code string) (*AggregatedData, error) // if there is no config with this hash returns nil,false
 }
 
 
@@ -44,7 +45,7 @@ func NewAWSConfigurationDatabase(s3Region, s3Bucket string) (*AWSConfigurationDa
 	return a, nil
 }
 
-func(a *AWSConfigurationDatabase) Store(code string, data *autocfg.AggregatedData) error{
+func(a *AWSConfigurationDatabase) Store(code string, data *AggregatedData) error{
 	buffer, err := yaml.Marshal(data)
 	if err != nil{
 		return errors.Wrap(err, "error while marshaling aggregatedData")
@@ -66,18 +67,24 @@ func(a *AWSConfigurationDatabase) Store(code string, data *autocfg.AggregatedDat
 	return errors.Wrap(err, "error while saving file to aws s3")
 }
 
-func(a *AWSConfigurationDatabase) Retrieve(code string) (*autocfg.AggregatedData, error){
+func(a *AWSConfigurationDatabase) Retrieve(code string) (*AggregatedData, error){
+	log.Debugf("retrieveing with %s", code)
 	key := a.directoryName + "/" + code
 	oo, err := s3.New(a.session).GetObject(&s3.GetObjectInput{
 		Bucket:               aws.String(a.bucket),
 		Key:                  aws.String(key),
 	})
-	defer oo.Body.Close()
 	if err != nil{
+		switch err.(awserr.Error).Code() {
+		case s3.ErrCodeNoSuchKey:
+			log.Debugf("no file found with key: %s", code)
+			return nil,nil
+		}
 		return nil, errors.Wrapf(err, "error while getting object with key %s", key)
 	}
+	defer oo.Body.Close()
 
-	ag := &autocfg.AggregatedData{}
+	ag := &AggregatedData{}
 	err = yaml.NewDecoder(oo.Body).Decode(ag)
 	if err != nil{
 		return nil, errors.Wrapf(err, "error while deocing object with key %s", key)

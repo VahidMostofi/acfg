@@ -130,7 +130,7 @@ joined
 	query = strings.Replace(query, "$START_TIME", strconv.FormatInt(startTime, 10),-1 )
 	query = strings.Replace(query, "$FINISH_TIME", strconv.FormatInt(finishTime, 10),-1 )
 
-	if podNameRegex, ok := filters["POD_NAME_REGEX"]; ok{
+	if podNameRegex, ok := filters[strings.ToLower("POD_NAME_REGEX")]; ok{
 		query = strings.Replace(query, "$POD_NAME_REGEX", podNameRegex.(string), -1)
 	}else{
 		return nil, errors.Errorf("need POD_NAME_REGEX in filters to get CPU utilizations")

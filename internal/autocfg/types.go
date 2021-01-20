@@ -3,71 +3,35 @@ package autocfg
 import (
 	"crypto/md5"
 	"fmt"
+	"github.com/montanaflynn/stats"
 	"github.com/pkg/errors"
-	"github.com/vahidmostofi/acfg/internal/aggregators/restime"
-	"github.com/vahidmostofi/acfg/internal/aggregators/sysstructureagg"
-	"github.com/vahidmostofi/acfg/internal/aggregators/utilizations"
+	log "github.com/sirupsen/logrus"
+	"github.com/vahidmostofi/acfg/internal/aggregators"
+	"github.com/vahidmostofi/acfg/internal/configuration"
 	"github.com/vahidmostofi/acfg/internal/workload"
 	"k8s.io/apimachinery/pkg/util/json"
 	"strconv"
+	"strings"
 )
 
-type Configuration struct{
-	ResourceType string
-	ReplicaCount *int64
-	CPU *int64
-	Memory *int64
-	EnvironmentValues map[string]string
-}
-
-func (c *Configuration) DeepCopy() *Configuration{
-	c2 := &Configuration{
-		ResourceType: c.ResourceType,
-		ReplicaCount: c.ReplicaCount,
-		CPU: c.CPU,
-		Memory: c.Memory,
-		EnvironmentValues: make(map[string]string),
-	}
-	for key,value := range c.EnvironmentValues{
-		c2.EnvironmentValues[key] = value
-	}
-
-	return c
-}
-
-func (c *Configuration) GetCPUStringForK8s() string{
-	s := strconv.FormatInt(*c.CPU, 10) + "m"
-	return s
-}
-
-func (c *Configuration) GetMemoryStringForK8s() string{
-	s := strconv.FormatInt(*c.Memory, 10) + "Mi"
-	return s
-}
-
-func GetHash(c map[string]*Configuration, version string) (string,error){
+//TODO add more args to this hash function. probably make it work with ...
+func GetHash(c map[string]*configuration.Configuration, version string) (string,error){
 	b, err := json.Marshal(c)
 	if err != nil{
 		return "", errors.Wrap(err, "cant convert configuration to json")
 	}
 	b = append(b, []byte(version)...)
+	log.Debugf("hashing with %s", string(b))
 	s := md5.Sum(b)
 	h := fmt.Sprintf("%x", s)
 	return h, err
 }
 
-type AggregatedData struct{
-	ResponseTimes map[string]*restime.ResponseTimes				`yaml:"responseTimes"`
-	CPUUtilizations map[string]*utilizations.CPUUtilizations	`yaml:"CPUUtilizations"`
-	SystemStructure *sysstructureagg.SystemStructure			`yaml:"structure"`
-	HappenedWorkload *workload.Workload							`yaml:"workload"`
-}
-
 type IterationInformation struct{
-	Configuration map[string]*Configuration	`yaml:"configurations"`
+	Configuration map[string]*configuration.Configuration	`yaml:"configurations"`
 	StartTime int64							`yaml:"startTime"`
 	FinishTime int64						`yaml:"finishTime"`
-	AggregatedData *AggregatedData			`yaml:"aggregatedData"`
+	AggregatedData *aggregators.AggregatedData			`yaml:"aggregatedData"`
 }
 
 type TestInformation struct{
@@ -76,6 +40,7 @@ type TestInformation struct{
 	AutoconfiguringApproach string 			`yaml:"autoConfigApproach"`
 	Iterations []*IterationInformation 		`yaml:"iterations"`
 	InputWorkload *workload.Workload 		`yaml:"workload"`
+	AllSettings	map[string]interface{}		`yaml:"allSettings"`
 }
 
 type SLA struct{
@@ -83,8 +48,30 @@ type SLA struct{
 }
 
 type Condition struct{
-	Type string
-	EndpointName string
-	Threshold float64
-	ComputeFn func([]float64) float64
+	Type string					`yaml:"type"`
+	EndpointName string			`yaml:"endpointName"`
+	Threshold float64			`yaml:"threshold"`
+	ComputeFnName string		`yaml:"computeFunctionName"`
+}
+
+func (c *Condition) GetComputeFunction() func([]float64) float64{
+	if strings.ToLower(c.ComputeFnName) == "mean"{
+		return func(values []float64) float64{
+			m, err := stats.Mean(values)
+			if err != nil{
+				panic(err)
+			}
+			return m
+		}
+	} else if strings.Contains(strings.ToLower(c.ComputeFnName), "percentile_"){
+		return func(values []float64) float64 {
+			percent, err := strconv.ParseFloat(strings.Replace(c.ComputeFnName,"percentile_", "",1), 64 )
+			if err != nil{
+				panic(errors.Wrapf(err,"cant parse %s to get ComputeFn function for condition of SLA. Acceptable example is percentile_90", c.ComputeFnName))
+			}
+			v, err := stats.Percentile(values, percent)
+			return v
+		}
+	}
+	panic(errors.New("unknown computeFnName for SLA condition: " + c.ComputeFnName))
 }

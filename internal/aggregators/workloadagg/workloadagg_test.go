@@ -10,10 +10,10 @@ import (
 )
 
 func TestInfluxDBWA_GetWorkload(t *testing.T) {
-	viper.Set(constants.CONFIG_INFLUXDB_URL, os.Getenv("INFLUXDB_URL"))
-	viper.Set(constants.CONFIG_INFLUXDB_TOKEN, os.Getenv("INFLUXDB_TOKEN"))
-	viper.Set(constants.CONFIG_INFLUXDB_ORG, os.Getenv("INFLUXDB_ORG"))
-	viper.Set(constants.CONFIG_INFLUXDB_BUCKET, os.Getenv("INFLUXDB_BUCKET"))
+	viper.Set(constants.EndpointsAggregatorArgsURL, os.Getenv("INFLUXDB_URL"))
+	viper.Set(constants.EndpointsAggregatorArgsToken, os.Getenv("INFLUXDB_TOKEN"))
+	viper.Set(constants.EndpointsAggregatorArgsOrganization, os.Getenv("INFLUXDB_ORG"))
+	viper.Set(constants.EndpointsAggregatorArgsBucket, os.Getenv("INFLUXDB_BUCKET"))
 
 	endpointsFilters := map[string]map[string]interface{}{
 		"login": {"URI_REGEX":"login*", "HTTP_METHOD":"POST"},
