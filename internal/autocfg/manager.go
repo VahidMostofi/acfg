@@ -15,6 +15,7 @@ import (
 	"github.com/vahidmostofi/acfg/internal/configuration"
 	"github.com/vahidmostofi/acfg/internal/constants"
 	"github.com/vahidmostofi/acfg/internal/loadgenerator"
+	"github.com/vahidmostofi/acfg/internal/sla"
 	"github.com/vahidmostofi/acfg/internal/strategies"
 	"github.com/vahidmostofi/acfg/internal/workload"
 	"gopkg.in/yaml.v2"
@@ -48,7 +49,7 @@ type AutoConfigManager struct{
 	endpointsFilter         map[string]map[string]interface{}
 	storePathPrefix         string
 	cancelFunc              context.CancelFunc
-	sla						*SLA
+	sla						*sla.SLA
 	lg 						*loadgenerator.K6LocalLoadGenerator
 }
 
@@ -65,7 +66,7 @@ type AutoConfigManagerArgs struct{
 	WorkloadAggregator  workloadagg.WorkloadAggregator
 	EndpointsFilter     map[string]map[string]interface{}
 	StorePathPrefix     string
-	SLA 				*SLA
+	SLA 				*sla.SLA
 	LoadGenerator		*loadgenerator.K6LocalLoadGenerator
 }
 
@@ -167,6 +168,9 @@ func (a *AutoConfigManager) storeTestInformation(test *TestInformation) error{
 func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strategies.Strategy, inputWorkload *workload.Workload) error {
 	ctx, cnF := context.WithCancel(context.Background())
 	a.cancelFunc = cnF
+
+	// adding SLA to strategy
+	autoConfigStrategyAgent.AddSLA(a.sla)
 
 	testInformation := &TestInformation{
 		Name: testName,
@@ -294,7 +298,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 }
 
 // TODO use this!
-func CheckCondition(data *aggregators.AggregatedData, condition Condition) (bool, error){
+func CheckCondition(data *aggregators.AggregatedData, condition sla.Condition) (bool, error){
 	if condition.Type == "ResponseTime"{
 		value := condition.GetComputeFunction()(*data.ResponseTimes[condition.EndpointName])
 		if value <= condition.Threshold{

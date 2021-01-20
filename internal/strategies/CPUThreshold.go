@@ -5,6 +5,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/vahidmostofi/acfg/internal/aggregators"
 	"github.com/vahidmostofi/acfg/internal/configuration"
+	"github.com/vahidmostofi/acfg/internal/sla"
 	"github.com/vahidmostofi/acfg/internal/workload"
 )
 
@@ -28,6 +29,10 @@ func NewCPUThreshold(utilizationIndicator string, utilizationThreshold float64, 
 	}
 
 	return c, nil
+}
+
+func (ct *CPUThreshold) AddSLA(sla *sla.SLA) error{
+	return nil
 }
 
 func (ct *CPUThreshold) GetName() string{
