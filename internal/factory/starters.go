@@ -44,7 +44,7 @@ func newConfigDatabase()(aggregators.ConfigDatabase,error){
 	return cd, nil
 }
 
-func getEndpointsFilters()(map[string]map[string]interface{},error){
+func GetEndpointsFilters()(map[string]map[string]interface{},error){
 	endpointsFilter, err := parseMapMapInterface(viper.GetStringMap(constants.EndpointsFilters))
 	if err != nil {
 		log.Errorf("this is found: %v", viper.Get(constants.EndpointsFilters))
@@ -55,7 +55,7 @@ func getEndpointsFilters()(map[string]map[string]interface{},error){
 
 func newEndpointsAggregator() (*endpointsagg.EndpointsAggregator, error){
 	// endpoints filters
-	endpointsFilter, err := getEndpointsFilters()
+	endpointsFilter, err := GetEndpointsFilters()
 	if err != nil{ return nil, err}
 	epagArgs := map[string]interface{}{
 		"url": viper.Get(constants.EndpointsAggregatorArgsURL), //IF YOU CHANGED THIS, CHANGE THE ERROR BELOW
@@ -90,7 +90,7 @@ func getSystemStructure() (*sysstructureagg.SystemStructure, error){
 	return ss, err
 }
 
-func getResourceFilters() (map[string]map[string]interface{},error){
+func GetResourceFilters() (map[string]map[string]interface{},error){
 	// resource filters
 	resourceFilters, err := parseMapMapInterface(viper.GetStringMap(constants.ResourceFilters))
 	if err != nil{
@@ -101,7 +101,7 @@ func getResourceFilters() (map[string]map[string]interface{},error){
 }
 
 func newResourceUsageAggregator()(*ussageagg.UsageAggregator,error){
-	rfs, err := getResourceFilters()
+	rfs, err := GetResourceFilters()
 	if err != nil{ return nil, err}
 
 	// usage Aggregator
@@ -197,7 +197,7 @@ func NewAutoConfigureManager() (*autocfg.AutoConfigManager,error){
 	if err != nil{ return nil, err}
 
 	// endpointsFilters
-	epf, err := getEndpointsFilters()
+	epf, err := GetEndpointsFilters()
 	if err != nil {return nil, err}
 
 	// get SLA
