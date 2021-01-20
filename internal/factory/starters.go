@@ -13,6 +13,7 @@ import (
 	"github.com/vahidmostofi/acfg/internal/autocfg"
 	"github.com/vahidmostofi/acfg/internal/constants"
 	"github.com/vahidmostofi/acfg/internal/loadgenerator"
+	"github.com/vahidmostofi/acfg/internal/sla"
 	"gopkg.in/yaml.v2"
 	"os"
 	"path/filepath"
@@ -246,9 +247,9 @@ func parseMapMapInterface(in map[string]interface{}) (map[string]map[string]inte
 	return res, nil
 }
 
-func getSLA() (*autocfg.SLA, error){
-	sla := &autocfg.SLA{
-		Conditions: make([]autocfg.Condition,0),
+func getSLA() (*sla.SLA, error){
+	sla := &sla.SLA{
+		Conditions: make([]sla.Condition,0),
 	}
 
 	path := viper.GetString(constants.SLAConditionsFile)
