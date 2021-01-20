@@ -14,6 +14,7 @@ import (
 	"github.com/vahidmostofi/acfg/internal/clustermanager"
 	"github.com/vahidmostofi/acfg/internal/configuration"
 	"github.com/vahidmostofi/acfg/internal/constants"
+	"github.com/vahidmostofi/acfg/internal/loadgenerator"
 	"github.com/vahidmostofi/acfg/internal/strategies"
 	"github.com/vahidmostofi/acfg/internal/workload"
 	"gopkg.in/yaml.v2"
@@ -48,6 +49,7 @@ type AutoConfigManager struct{
 	storePathPrefix         string
 	cancelFunc              context.CancelFunc
 	sla						*SLA
+	lg 						*loadgenerator.K6LocalLoadGenerator
 }
 
 type AutoConfigManagerArgs struct{
@@ -64,6 +66,7 @@ type AutoConfigManagerArgs struct{
 	EndpointsFilter     map[string]map[string]interface{}
 	StorePathPrefix     string
 	SLA 				*SLA
+	LoadGenerator		*loadgenerator.K6LocalLoadGenerator
 }
 
 func NewAutoConfigManager(args *AutoConfigManagerArgs) (*AutoConfigManager,error){
@@ -85,6 +88,7 @@ func NewAutoConfigManager(args *AutoConfigManagerArgs) (*AutoConfigManager,error
 		endpointsFilter: args.EndpointsFilter,
 		storePathPrefix: args.StorePathPrefix,
 		sla: args.SLA,
+		lg: args.LoadGenerator,
 	}
 	return a,nil
 }
@@ -170,6 +174,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 		Iterations: make([]*IterationInformation,0),
 		InputWorkload: inputWorkload,
 		VersionCode: viper.GetString(constants.VersionCode),
+		AllSettings: viper.AllSettings(),
 	}
 
 	log.Debug("AutoConfigManager.Run() waiting for all deployments to be available ")
@@ -228,12 +233,12 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 
 			// start the load generator and wait a few seconds for it
 			log.Debugf("AutoConfigManager.Run() load generator is starting")
-			// TODO starting the load generator
+			a.lg.Start(inputWorkload, nil)
 
 			// wait for the specific duration and then stop the load generator
 			log.Infof("AutoConfigManager.Run() load generator is started, waiting %s while load generator is running.", a.waitTimes.LoadTestDuration.String())
 			time.Sleep(a.waitTimes.LoadTestDuration)
-			// TODO stopping the load generator
+			a.lg.Stop()
 
 			iterInfo.FinishTime = time.Now().Unix()
 			log.Infof("AutoConfigManager.Run() load generator is done, waiting %s.", a.waitTimes.WaitAfterLoadGeneratorIsDone.String())
@@ -251,9 +256,11 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 		}
 
 		// at this point we have the aggregated data, we either found it with cache or by running the load generator
+		// so we print some info to the log about this iteration and the aggregated data in it.
 		for endpointName, responseTimes := range iterInfo.AggregatedData.ResponseTimes{
 			log.Infof("response times for %s: %s", endpointName, responseTimes.String())
 		}
+		log.Infof("workload that happend during this iteration: %s", iterInfo.AggregatedData.HappenedWorkload.String())
 
 		testInformation.Iterations = append(testInformation.Iterations, iterInfo)
 		err = a.storeTestInformation(testInformation)

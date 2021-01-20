@@ -12,6 +12,7 @@ import (
 	"github.com/vahidmostofi/acfg/internal/aggregators/workloadagg"
 	"github.com/vahidmostofi/acfg/internal/autocfg"
 	"github.com/vahidmostofi/acfg/internal/constants"
+	"github.com/vahidmostofi/acfg/internal/loadgenerator"
 	"gopkg.in/yaml.v2"
 	"os"
 	"path/filepath"
@@ -77,8 +78,8 @@ func getSystemStructure() (*sysstructureagg.SystemStructure, error){
 	// system structure
 	tempConverted := viper.GetStringMapStringSlice(constants.SystemStructureAggregatorEndpoints2Resources)
 	//if !ok {
-	//	log.Errorf("this is found: %v", viper.Get(constants.SystemStructureAggregatorEndpoints2Resources))
-	//	return nil, errors.Errorf("cant find endpoints to resources in configs using %s with type map[string][]string", constants.SystemStructureAggregatorEndpoints2Resources)
+	// 	log.Errorf("this is found: %v", viper.Get(constants.SystemStructureAggregatorEndpoints2Resources))
+	// 	return nil, errors.Errorf("cant find endpoints to resources in configs using %s with type map[string][]string", constants.SystemStructureAggregatorEndpoints2Resources)
 	//}
 	ss, err := sysstructureagg.NewSystemStructure(viper.GetString(constants.SystemStructureAggregatorType), tempConverted)
 	if err != nil{
@@ -201,6 +202,10 @@ func NewAutoConfigureManager() (*autocfg.AutoConfigManager,error){
 	sla, err := getSLA()
 	if err != nil{return nil, err}
 
+	// load generator
+	lg, err := getLoadGenerator()
+	if err != nil{return nil, err}
+
 	args := &autocfg.AutoConfigManagerArgs {
 		Namespace: viper.GetString(constants.TargetSystemNamespace),
 		DeploymentsToManage: viper.GetStringSlice(constants.TargetSystemDeploymentsToManage),
@@ -218,6 +223,7 @@ func NewAutoConfigureManager() (*autocfg.AutoConfigManager,error){
 		EndpointsFilter: epf,
 		StorePathPrefix: getStoreDirectory(),
 		SLA: sla,
+		LoadGenerator: lg,
 	}
 
 	acfgManager, err := autocfg.NewAutoConfigManager(args)
@@ -257,4 +263,18 @@ func getSLA() (*autocfg.SLA, error){
 	}
 
 	return sla, nil
+}
+
+func getLoadGenerator() (*loadgenerator.K6LocalLoadGenerator, error){
+	if strings.ToLower(viper.GetString(constants.LoadGeneratorType)) == "k6"{
+		lg := &loadgenerator.K6LocalLoadGenerator{}
+		r, err := os.Open(viper.GetString(constants.LoadGeneratorScriptPath))
+		if err != nil{
+			return nil, errors.Wrap(err, "error while getting load generator")
+		}
+		lg.Reader = r
+		return lg, nil
+	}
+
+	return nil, errors.New("unknown load generator type " + viper.GetString(constants.LoadGeneratorType))
 }

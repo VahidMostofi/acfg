@@ -52,3 +52,6 @@ const TargetSystemWorkloadBody = "TargetSystem.Workload.Body"
 
 const StrategyName = "StrategyName"
 const SLAConditionsFile = "SLAConditionsFile"
+
+const LoadGeneratorType = "LoadGenerator.Type"
+const LoadGeneratorScriptPath = "LoadGenerator.ScriptPath"

@@ -1,6 +1,7 @@
 package workload
 
 import (
+	"fmt"
 	"github.com/spf13/viper"
 	"github.com/vahidmostofi/acfg/internal/constants"
 )
@@ -15,6 +16,11 @@ func GetWorkload() Workload{
 	}
 	return w
 }
+
+func (w *Workload) String() string{
+	return fmt.Sprintf("total:%d %v", w.GetTotalCount(), w.GetMap())
+}
+
 
 func (w *Workload) GetTotalCount() int64{
 	var total int64
