@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 )
+// TODO this file is needed to be deleted
 
 func waitDeploymentHaveDesiredCondition (ctx context.Context, deploymentClient v12.DeploymentInterface, desiredReason string, deploymentName string, wg *sync.WaitGroup){
 	wait.Poll(5 * time.Second, 5 * time.Minute, func() (bool, error){
