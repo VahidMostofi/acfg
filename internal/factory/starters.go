@@ -14,6 +14,7 @@ import (
 	"github.com/vahidmostofi/acfg/internal/constants"
 	"github.com/vahidmostofi/acfg/internal/loadgenerator"
 	"github.com/vahidmostofi/acfg/internal/sla"
+	"github.com/vahidmostofi/acfg/internal/workload"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
@@ -204,8 +205,9 @@ func NewAutoConfigureManager() (*autocfg.AutoConfigManager,error){
 	sla, err := getSLA()
 	if err != nil{return nil, err}
 
+	wl := workload.GetTargetWorkload()
 	// load generator
-	lg, err := getLoadGenerator()
+	lg, err := getLoadGenerator(wl)
 	if err != nil{return nil, err}
 
 	args := &autocfg.AutoConfigManagerArgs {
@@ -267,9 +269,9 @@ func getSLA() (*sla.SLA, error){
 	return sla, nil
 }
 
-func getLoadGenerator() (*loadgenerator.K6LocalLoadGenerator, error){
+func getLoadGenerator(w workload.Workload) (*loadgenerator.K6LocalLoadGenerator, error){
 	if strings.ToLower(viper.GetString(constants.LoadGeneratorType)) == "k6"{
-		lg := &loadgenerator.K6LocalLoadGenerator{}
+		lg := &loadgenerator.K6LocalLoadGenerator{Args: w}
 		r, err := os.Open(viper.GetString(constants.LoadGeneratorScriptPath))
 		if err != nil{
 			return nil, errors.Wrap(err, "error while getting load generator")

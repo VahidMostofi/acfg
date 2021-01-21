@@ -204,7 +204,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 
 		if a.usingHash {
 			// get the hash of the configuration; if the hash and its value already exists in the database && we are using hash
-			hashCode,err := GetHash(iterInfo.Configuration, testInformation.VersionCode)
+			hashCode,err := GetHash(iterInfo.Configuration, testInformation.VersionCode, inputWorkload)
 			if err != nil{
 				return errors.Wrap(err,"error while getting hash code from configuration")
 			}
@@ -241,7 +241,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 
 			// start the load generator and wait a few seconds for it
 			log.Debugf("AutoConfigManager.Run() load generator is starting")
-			a.lg.Start(inputWorkload, nil)
+			a.lg.Start(inputWorkload)
 
 			// wait for the specific duration and then stop the load generator
 			log.Infof("AutoConfigManager.Run() load generator is started, waiting %s while load generator is running.", a.waitTimes.LoadTestDuration.String())
@@ -258,7 +258,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 			}
 
 			if a.usingHash{
-				hashCode,err := GetHash(iterInfo.Configuration, testInformation.VersionCode)
+				hashCode,err := GetHash(iterInfo.Configuration, testInformation.VersionCode, inputWorkload)
 				if err != nil{
 					return errors.Wrap(err,"error while getting hash code from configuration")
 				}

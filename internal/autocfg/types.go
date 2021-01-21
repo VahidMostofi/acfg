@@ -12,13 +12,19 @@ import (
 )
 
 //TODO add more args to this hash function. probably make it work with ...
-func GetHash(c map[string]*configuration.Configuration, version string) (string,error){
-	panic("you need to add workload and name and system and other stuff to this!")
+func GetHash(c map[string]*configuration.Configuration, version string, inputWorkload *workload.Workload) (string,error){
+	panic("you need to add name and system and other stuff to this!")
 	b, err := json.Marshal(c)
 	if err != nil{
 		return "", errors.Wrap(err, "cant convert configuration to json")
 	}
 	b = append(b, []byte(version)...)
+
+	temp, err := json.Marshal(inputWorkload)
+	if err != nil{
+		panic(err)
+	}
+	b = append(b, temp...)
 	log.Debugf("hashing with %s", string(b))
 	s := md5.Sum(b)
 	h := fmt.Sprintf("%x", s)

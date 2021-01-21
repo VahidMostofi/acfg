@@ -4,16 +4,13 @@ import (
 	"fmt"
 	"github.com/spf13/viper"
 	"github.com/vahidmostofi/acfg/internal/constants"
+	"strconv"
 )
 
-type Workload map[string]int64
+type Workload map[string]string
 
 func GetTargetWorkload() Workload{
-	temp := viper.GetStringMap(constants.TargetSystemWorkloadBody)
-	w := make(map[string]int64)
-	for k,v := range temp{
-		w[k] = int64(v.(int))
-	}
+	w := viper.GetStringMapString(constants.LoadGeneratorArgs)
 	return w
 }
 
@@ -21,25 +18,31 @@ func (w *Workload) String() string{
 	if w == nil{
 		return "workload is nil"
 	}
-	return fmt.Sprintf("total:%d %v", w.GetTotalCount(), w.GetMap())
+	return fmt.Sprintf("total:%f %v", w.GetTotalCount(), w.GetMap())
 }
 
-
-func (w *Workload) GetTotalCount() int64{
-	var total int64
-	for _,v := range w.GetMap(){
+func (w *Workload) GetTotalCount() float64{
+	if _, ok := w.GetMap()["args_vus"]; ok{
+		return -1
+	}
+	var total float64
+	for _, value := range w.GetMap(){
+		v, err := strconv.ParseFloat(value, 64)
+		if err != nil{
+			panic(err)
+		}
 		total += v
 	}
 	return total
 }
 
-func (w *Workload) GetMap() map[string]int64{
+func (w *Workload) GetMap() map[string]string{
 	_w := *w
-	wm := map[string]int64(_w)
+	wm := map[string]string(_w)
 	return wm
 }
 
 // TODO
-func CompareWorkloads(w1 *Workload, w2 *Workload) float64{
+func CompareWorkloads(w1 *Workload, w2 *Workload) int{
 	return 0
 }
