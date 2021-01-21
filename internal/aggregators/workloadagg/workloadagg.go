@@ -56,7 +56,7 @@ func (i *InfluxDBWA) GetWorkload(startTime, finishTime int64, endpointFilters ma
 		return nil, errors.Errorf("for getting GetCPUUtilizations(), startTime must be less than finishTime")
 	}
 
-	w := make(map[string]int64)
+	w := make(map[string]string)
 
 	for endpointName, filters := range endpointFilters{
 		query := `
@@ -90,7 +90,7 @@ from(bucket: "$BUCKET_NAME")
 		}
 
 		c := len(values)
-		w[endpointName] = int64(math.Round(float64(c) / float64(finishTime - startTime)))
+		w[endpointName] = strconv.FormatInt(int64(math.Round(float64(c) / float64(finishTime - startTime))), 10)
 	}
 
 	wc := workload.Workload(w)

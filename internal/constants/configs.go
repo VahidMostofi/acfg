@@ -39,8 +39,6 @@ const AutoConfigureCacheS3Bucket = "AutoConfigure.CacheS3Bucket"
 
 const ResultsDirectory = "Results.Directory" // TODO do we need this? shouldn't we move to s3?
 
-const TargetSystemWorkloadName = "TargetSystem.Workload.Name"
-
 const WaitTimesWaitAfterConfigIsDeployedSeconds = "WaitTimes.WaitAfterConfigIsDeployedSeconds"
 const WaitTimesLoadTestDurationSeconds = "WaitTimes.LoadTestDurationSeconds"
 const WaitTimesWaitAfterLoadGeneratorIsDoneSeconds = "WaitTimes.WaitAfterLoadGeneratorIsDoneSeconds"
@@ -48,10 +46,12 @@ const WaitTimesWaitAfterLoadGeneratorIsDoneSeconds = "WaitTimes.WaitAfterLoadGen
 const TestName = "TestName"
 
 const TargetSystemWorkload = "TargetSystem.Workload"
+const TargetSystemWorkloadName = "TargetSystem.Workload.Name"
 const TargetSystemWorkloadBody = "TargetSystem.Workload.Body"
 
 const StrategyName = "StrategyName"
 const SLAConditionsFile = "SLAConditionsFile"
 
+const LoadGeneratorArgs = "LoadGenerator.Args"
 const LoadGeneratorType = "LoadGenerator.Type"
 const LoadGeneratorScriptPath = "LoadGenerator.ScriptPath"

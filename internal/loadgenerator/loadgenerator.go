@@ -24,18 +24,19 @@ type LoadGenerator interface{
 
 type K6LocalLoadGenerator struct {
 	Data []byte
+	Args map[string]string
 	feedback map[string]interface{}
 }
 
-func (k *K6LocalLoadGenerator) Start(workload *workload.Workload, extra map[string]string) error {
+func (k *K6LocalLoadGenerator) Start(workload *workload.Workload) error {
 	log.SetLevel(log.DebugLevel)
 	log.Debug("K6LocalLoadGenerator: reading content of script for load generator")
 
 	scriptContent := string(k.Data)
 
-	if extra != nil{
-		log.Debugf("K6LocalLoadGenerator: replacing extra information on script content")
-		for key,value := range extra{
+	if k.Args != nil{
+		log.Debugf("K6LocalLoadGenerator: replacing k.Args information on script content")
+		for key,value := range k.Args{
 			log.Debugf("K6LocalLoadGenerator: replacing %s with %s", key, value)
 			scriptContent = strings.ReplaceAll(scriptContent, key, value)
 		}
