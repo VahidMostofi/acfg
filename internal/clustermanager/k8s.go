@@ -95,6 +95,7 @@ func (k *K8s) UpdateConfigurationsAndWait(ctx context.Context, config map[string
 		log.Debugf("UpdateConfigurationsAndWait() updating deployment %s with %s", resourceName, c.String())
 		deploymentObj, getErr := deploymentsClient.Get(ctx, resourceName, metav1.GetOptions{})
 		if getErr != nil{
+			log.Errorf("%s", getErr.Error()) //TODO this is not enoough
 			return errors.Wrap(getErr, fmt.Sprintf("failed to get latest version of Deployment: %s", resourceName))
 		}
 
