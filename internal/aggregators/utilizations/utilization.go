@@ -107,7 +107,7 @@ data_total = from(bucket: "$BUCKET_NAME")
  |> filter(fn: (r) => r["podName"] =~ /$POD_NAME_REGEX/)
  |> keep(columns: ["_time","_value","podName"])
 
-data_usage = from(bucket: "general")
+data_usage = from(bucket: "$BUCKET_NAME")
  |> range(start: $START_TIME, stop: $FINISH_TIME)
  |> filter(fn: (r) => r["_measurement"] == "resource_usage")
  |> filter(fn: (r) => r["_field"] == "cpu")
