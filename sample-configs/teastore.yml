@@ -57,44 +57,43 @@ SystemStructureAggregator:
       - "recommender"
 EndpointsFilters:
   "home":
-    "URI_REGEX": "tools.descartes.teastore.webui/"
+    "URI_REGEX": "tools.descartes.teastore.webui\\/\"$"
     "HTTP_METHOD": "GET"
   "login":
-    "URI_REGEX": "tools.descartes.teastore.webui/loginAction"
+    "URI_REGEX": "tools.descartes.teastore.webui\\/loginAction"
     "HTTP_METHOD": "POST"
   "list-products":
-    "URI_REGEX": "tools.descartes.teastore.webui/category?category=*"
+    "URI_REGEX": "tools.descartes.teastore.webui\\/category"
     "HTTP_METHOD": "GET"
   "look-at-product":
-    "URI_REGEX": "tools.descartes.teastore.webui/product*"
+    "URI_REGEX": "tools.descartes.teastore.webui\\/product*"
     "HTTP_METHOD": "GET"
   "add-to-cart":
-    "URI_REGEX": "tools.descartes.teastore.webui/cartAction"
+    "URI_REGEX": "tools.descartes.teastore.webui\\/cartAction"
     "HTTP_METHOD": "POST"
 ResourceFilters:
-  "registry":
+  "teastore-registry":
     "POD_NAME_REGEX": "^teastore-registry-*"
-  "persistence":
+  "teastore-persistence":
     "POD_NAME_REGEX": "^teastore-persistence-*"
-  "image":
+  "teastore-image":
     "POD_NAME_REGEX": "^teastore-image-*"
-  "auth":
+  "teastore-auth":
     "POD_NAME_REGEX": "^teastore-auth-*"
-  "webui":
+  "teastore-webui":
     "POD_NAME_REGEX": "^teastore-webui-*"
-  "recommender":
+  "teastore-recommender":
     "POD_NAME_REGEX": "^teastore-recommender-*"
 TargetSystem:
   Name: "teastore"
   Namespace: "default"
-  TargetSystem:
-    DeploymentsToManage:
-      - "teastore-auth"
-      - "teastore-image"
-      - "teastore-webui"
-      - "teastore-registry"
-      - "teastore-persistence"
-      - "teastore-recommender"
+  DeploymentsToManage:
+    - "teastore-auth"
+    - "teastore-image"
+    - "teastore-webui"
+    - "teastore-registry"
+    - "teastore-persistence"
+    - "teastore-recommender"
   Workload:
     Name: "jmeter-browse"
 ConfigurationValidation:
