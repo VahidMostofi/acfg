@@ -72,7 +72,7 @@ func (j* JMeterLocalDocker) Start(workload *workload.Workload) error{
 
 func (j* JMeterLocalDocker) Stop() error{
 	log.Debug("JMeterLocalDocker: Stopping load generator.")
-	removeCmd := exec.Command("docker", "container", "rm", "-f", containerName)
+	removeCmd := exec.Command("docker", "container", "rm", "-f", jMeterContainerName)
 	err := removeCmd.Run()
 
 	if err != nil{
