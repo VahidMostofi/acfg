@@ -109,19 +109,14 @@ Results:
   Directory: "/home/vahid/acfg-results/$TARGETSYSTEM.NAME/$TargetSystem.Workload.Name/$STRATEGY.NAME/"
 
 WaitTimes:
+  WaitAfterLoadGeneratorStartes: 180
   WaitAfterConfigIsDeployedSeconds: 60
   LoadTestDurationSeconds: 180
-  WaitAfterLoadGeneratorIsDoneSeconds: 180
+  WaitAfterLoadGeneratorIsDoneSeconds: 60
 
-SLAConditionsFile: "/home/vahid/Desktop/projects/acfg/sample-configs/slas/all250.yaml"
+SLAConditionsFile: "/home/vahid/workspace/acfg/sample-configs/slas/teastore-all-250.yaml"
 
 LoadGenerator:
-  Type: "k6"
-  ScriptPath: "/home/vahid/Desktop/temp.js"
-  Args:
-    args_vus: "20"
-    args_duration: "45s"
-    args_login_prob: "0.3"
-    args_getbook_prob: "0.1"
-    args_editbook_prob: "0.6"
-    args_sleep_duration: "0.5"
+  Type: "jmeter"
+  Command: "-t /input.jmx -Jhostname 172.21.0.2 -Jport 9099 -JnumUser 1 -JrampUp 1 -l mylogfile.log -n"
+  ScriptPath: "/home/vahid/workspace/t/teastore_browse_nogui_.jmx"

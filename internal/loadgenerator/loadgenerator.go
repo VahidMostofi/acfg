@@ -2,13 +2,12 @@ package loadgenerator
 
 import (
 	"github.com/vahidmostofi/acfg/internal/workload"
-	"io"
 )
 
 const containerName = "kkkk6localautoconfig"
 
 type LoadGenerator interface{
-	Start(workload *workload.Workload, reader io.Reader, extras map[string]string) error
+	Start(workload *workload.Workload) error
 	Stop() error
 	GetFeedback() (map[string]interface{}, error)
 }
