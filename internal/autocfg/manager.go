@@ -72,6 +72,7 @@ type AutoConfigManagerArgs struct{
 }
 
 func NewAutoConfigManager(args *AutoConfigManagerArgs) (*AutoConfigManager,error){
+	log.Debugf("%s: deploymentsToManage: %v", "NewAutoConfigManager", args.DeploymentsToManage)
 	c, err := clustermanager.NewK8ClusterManager(args.Namespace, args.DeploymentsToManage)
 	if err != nil{
 		return nil, errors.Wrap(err, "error while creating kubernetes cluster clustermanager.")
@@ -244,6 +245,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 			time.Sleep(a.waitTimes.WaitAfterLoadGeneratorStartes)
 
 			iterInfo.StartTime = time.Now().Unix()
+			log.Debugf("startTime is: %d", iterInfo.StartTime)
 
 			// wait for the specific duration and then stop the load generator
 			log.Infof("AutoConfigManager.Run() load generator is started, waiting %s while load generator is running.", a.waitTimes.LoadTestDuration.String())
@@ -252,6 +254,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 			iterInfo.LoadGeneratorFeedback, err = a.lg.GetFeedback()
 
 			iterInfo.FinishTime = time.Now().Unix()
+			log.Debugf("finishTime is: %d", iterInfo.FinishTime)
 			log.Infof("AutoConfigManager.Run() load generator is done, waiting %s.", a.waitTimes.WaitAfterLoadGeneratorIsDone.String())
 			time.Sleep(a.waitTimes.WaitAfterLoadGeneratorIsDone)
 			iterInfo.AggregatedData , err = a.aggregatedData(iterInfo.StartTime, iterInfo.FinishTime)
