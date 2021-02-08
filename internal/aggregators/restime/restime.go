@@ -3,13 +3,14 @@ package restime
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/montanaflynn/stats"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/vahidmostofi/acfg/internal/dataaccess"
-	"strconv"
-	"strings"
 )
 
 // ResponseTimeAggregator uses some functionality to gather response times based on some functionality
@@ -25,15 +26,23 @@ type ResponseTimeAggregator interface {
 // ResponseTimes is a named type for []float64 with helper functions
 type ResponseTimes []float64
 
-func (rts *ResponseTimes) String() string{
+func (rts *ResponseTimes) String() string {
 	m, err := rts.GetMean()
-	if err != nil{panic(err)}
+	if err != nil {
+		panic(err)
+	}
 	p90, err := rts.GetPercentile(90)
-	if err != nil{panic(err)}
+	if err != nil {
+		panic(err)
+	}
 	p95, err := rts.GetPercentile(95)
-	if err != nil{panic(err)}
+	if err != nil {
+		panic(err)
+	}
 	p99, err := rts.GetPercentile(99)
-	if err != nil{panic(err)}
+	if err != nil {
+		panic(err)
+	}
 	return fmt.Sprintf("count: %d, mean: %fs, 90P: %fs, 95P: %fs, 99P: %fs", rts.GetCount(), m, p90, p95, p99)
 }
 
@@ -79,26 +88,26 @@ func (rts *ResponseTimes) GetCount() int {
 }
 
 // InfluxDBRTA gets response times from influxdb
-type InfluxDBRTA struct{
-	qAPI api.QueryAPI
-	ctx context.Context
-	cnF context.CancelFunc
-	org string
+type InfluxDBRTA struct {
+	qAPI   api.QueryAPI
+	ctx    context.Context
+	cnF    context.CancelFunc
+	org    string
 	bucket string
 }
 
 // NewInfluxDBRTA returns a new InfluxDBRTA
-func NewInfluxDBRTA(url, token, organization, bucket string) (*InfluxDBRTA,error){
-	if len(strings.Trim(url, " ")) == 0{
+func NewInfluxDBRTA(url, token, organization, bucket string) (*InfluxDBRTA, error) {
+	if len(strings.Trim(url, " ")) == 0 {
 		return nil, errors.Errorf("the argument %s cant be empty string", "url")
 	}
-	if len(strings.Trim(token, " ")) == 0{
+	if len(strings.Trim(token, " ")) == 0 {
 		return nil, errors.Errorf("the argument %s cant be empty string", "token")
 	}
-	if len(strings.Trim(organization, " ")) == 0{
+	if len(strings.Trim(organization, " ")) == 0 {
 		return nil, errors.Errorf("the argument %s cant be empty string", "organization")
 	}
-	if len(strings.Trim(bucket, " ")) == 0{
+	if len(strings.Trim(bucket, " ")) == 0 {
 		return nil, errors.Errorf("the argument %s cant be empty string", "bucket")
 	}
 	ctx, cnF := context.WithCancel(context.Background())
@@ -109,7 +118,7 @@ func NewInfluxDBRTA(url, token, organization, bucket string) (*InfluxDBRTA,error
 }
 
 // GetResponseTimes ....
-func (i *InfluxDBRTA) GetResponseTimes(startTime, finishTime int64, filters map[string]interface{})  (*ResponseTimes, error){
+func (i *InfluxDBRTA) GetResponseTimes(startTime, finishTime int64, filters map[string]interface{}) (*ResponseTimes, error) {
 	if startTime >= finishTime {
 		return nil, errors.Errorf("for getting GetCPUUtilizations(), startTime must be less than finishTime")
 	}
@@ -120,18 +129,18 @@ from(bucket: "$BUCKET_NAME")
   |> group()
   |> keep(columns: ["_time", "_value"])
 `
-	query = strings.Replace(query, "$BUCKET_NAME", i.bucket,-1 )
-	query = strings.Replace(query, "$START_TIME", strconv.FormatInt(startTime, 10),-1 )
-	query = strings.Replace(query, "$FINISH_TIME", strconv.FormatInt(finishTime, 10),-1 )
+	query = strings.Replace(query, "$BUCKET_NAME", i.bucket, -1)
+	query = strings.Replace(query, "$START_TIME", strconv.FormatInt(startTime, 10), -1)
+	query = strings.Replace(query, "$FINISH_TIME", strconv.FormatInt(finishTime, 10), -1)
 
 	conditions := ""
-	if httpMethod, ok := filters[strings.ToLower("HTTP_METHOD")]; ok{
-		if conditions == ""{
+	if httpMethod, ok := filters[strings.ToLower("HTTP_METHOD")]; ok {
+		if conditions == "" {
 			conditions = " and "
 		}
-		conditions += "r.method == \"\\\"" + httpMethod.(string) + "\\\"\""
+		conditions += "r.method == \"" + httpMethod.(string) + "\""
 	}
-	if uriRegex, ok := filters[strings.ToLower("URI_REGEX")]; ok{
+	if uriRegex, ok := filters[strings.ToLower("URI_REGEX")]; ok {
 		conditions += " and r.uri =~ /" + uriRegex.(string) + "/"
 	}
 	query = strings.Replace(query, "$CONDITIONS", conditions, -1)
@@ -139,8 +148,8 @@ from(bucket: "$BUCKET_NAME")
 	log.Debug("getting response times from influxdb with query:\n" + query)
 
 	_, values, err := dataaccess.QuerySingleTable(i.qAPI, i.ctx, query, "_value")
-	if err != nil{
-		return nil, errors.Wrap(err, "error getting response times from influxdb using:\n" + query)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting response times from influxdb using:\n"+query)
 	}
 
 	r := ResponseTimes(values)
