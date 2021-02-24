@@ -1,47 +1,48 @@
 package strategies
 
 import (
+	"strings"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/vahidmostofi/acfg/internal/aggregators"
 	"github.com/vahidmostofi/acfg/internal/configuration"
 	"github.com/vahidmostofi/acfg/internal/sla"
 	"github.com/vahidmostofi/acfg/internal/workload"
-	"strings"
 )
 
-type BNV1 struct{
-	endpoints []string
-	resources []string
-	initialCPU int64 // 1 CPU would be 1000
+type BNV1 struct {
+	endpoints     []string
+	resources     []string
+	initialCPU    int64 // 1 CPU would be 1000
 	initialMemory int64 // 1 Gigabyte memory would be 1024
-	delta int64
-	sla *sla.SLA
+	delta         int64
+	sla           *sla.SLA
 }
 
-func NewBNV1(delta int64, endpoints []string, resources []string, initialCPU, initialMemory int64) (*BNV1, error){
+func NewBNV1(delta int64, endpoints []string, resources []string, initialCPU, initialMemory int64) (*BNV1, error) {
 	c := &BNV1{
-		endpoints: endpoints,
-		resources: resources,
-		initialCPU: initialCPU,
+		endpoints:     endpoints,
+		resources:     resources,
+		initialCPU:    initialCPU,
 		initialMemory: initialMemory,
-		delta: delta,
+		delta:         delta,
 	}
 
 	return c, nil
 }
 
-func (bnv1 *BNV1) AddSLA(sla *sla.SLA) error{
+func (bnv1 *BNV1) AddSLA(sla *sla.SLA) error {
 	bnv1.sla = sla
 	return nil
 }
 
-func (bnv1 *BNV1) GetName() string{
+func (bnv1 *BNV1) GetName() string {
 	return "BNV1"
 }
 
-func (bnv1 *BNV1) GetInitialConfiguration(workload *workload.Workload, aggData *aggregators.AggregatedData) (map[string]*configuration.Configuration, error){
+func (bnv1 *BNV1) GetInitialConfiguration(workload *workload.Workload, aggData *aggregators.AggregatedData) (map[string]*configuration.Configuration, error) {
 	config := make(map[string]*configuration.Configuration)
-	for _,resource := range bnv1.resources{
+	for _, resource := range bnv1.resources {
 		config[resource] = &configuration.Configuration{}
 		config[resource].ReplicaCount = int64Ptr(1)
 		config[resource].CPU = int64Ptr(bnv1.initialCPU)
@@ -52,7 +53,7 @@ func (bnv1 *BNV1) GetInitialConfiguration(workload *workload.Workload, aggData *
 	return config, nil
 }
 
-func (bnv1 *BNV1) ConfigureNextStep(currentConfig map[string]*configuration.Configuration, workload *workload.Workload, aggData *aggregators.AggregatedData) (map[string]*configuration.Configuration, bool, error){
+func (bnv1 *BNV1) ConfigureNextStep(currentConfig map[string]*configuration.Configuration, workload *workload.Workload, aggData *aggregators.AggregatedData) (map[string]*configuration.Configuration, bool, error) {
 	isChanged := false
 	newConfig := make(map[string]*configuration.Configuration)
 
@@ -65,14 +66,14 @@ func (bnv1 *BNV1) ConfigureNextStep(currentConfig map[string]*configuration.Conf
 		finalCPUCount[resource] = initialCPUCount[resource]
 	}
 
-	for _, endpoint := range bnv1.endpoints{
+	for _, endpoint := range bnv1.endpoints {
 
 		// does this endpoint meet all the conditions?
 		doMeet := true
-		for _, condition := range getConditionsMatchingEndpoint(endpoint, bnv1.sla.Conditions){
+		for _, condition := range getConditionsMatchingEndpoint(endpoint, bnv1.sla.Conditions) {
 			if strings.Compare(condition.Type, sla.SLAConditionTypeResponseTime) == 0 {
 				requiredValue := condition.GetComputeFunction()(*aggData.ResponseTimes[endpoint])
-				if requiredValue > condition.Threshold{
+				if requiredValue > condition.Threshold {
 					doMeet = false
 					log.Debugf("BNV1.ConfigureNextStep(): endpoint %s does'nt meet the SLA. %f > %f", endpoint, requiredValue, condition.Threshold)
 					break
@@ -81,7 +82,7 @@ func (bnv1 *BNV1) ConfigureNextStep(currentConfig map[string]*configuration.Conf
 		}
 
 		// doesn't meet the sla so we add bnv1.delta CPU units to the bottle neck. (the resource in the path the most CPU utilization).
-		if !doMeet{
+		if !doMeet {
 			_, resourceWithMaxCPUUtil := aggData.GetMinMaxResourcesBasedOnCPUUtil(endpoint)
 			log.Infof("BNV1.ConfigureNextStep(): for endpoint %s, %s has the most CPU utillization.", endpoint, resourceWithMaxCPUUtil)
 
@@ -96,9 +97,9 @@ func (bnv1 *BNV1) ConfigureNextStep(currentConfig map[string]*configuration.Conf
 		}
 	}
 
-	if isChanged{
-		for resourceName := range newConfig{
-			newConfig[resourceName].UpdateEqualWithNewCPUValue(finalCPUCount[resourceName],1000)
+	if isChanged {
+		for resourceName := range newConfig {
+			newConfig[resourceName].UpdateEqualWithNewCPUValue(finalCPUCount[resourceName], 1000)
 			log.Infof("BNV1.ConfigureNextStep(): new configuration for %s: %s", resourceName, newConfig[resourceName].String())
 		}
 	}
@@ -106,11 +107,11 @@ func (bnv1 *BNV1) ConfigureNextStep(currentConfig map[string]*configuration.Conf
 	return newConfig, isChanged, nil
 }
 
-func getConditionsMatchingEndpoint(endpoint string, conditions []sla.Condition) []*sla.Condition{
-	res := make([]*sla.Condition,0)
-	for _,c := range conditions{
-		if strings.Compare(c.EndpointName, endpoint) == 0{
-			res = append(res, &c)
+func getConditionsMatchingEndpoint(endpoint string, conditions []sla.Condition) []sla.Condition {
+	res := make([]sla.Condition, 0)
+	for _, c := range conditions {
+		if strings.Compare(c.EndpointName, endpoint) == 0 {
+			res = append(res, c)
 		}
 	}
 	return res
