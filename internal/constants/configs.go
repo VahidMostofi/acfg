@@ -42,6 +42,7 @@ const ResultsDirectory = "Results.Directory" // TODO do we need this? shouldn't 
 const WaitTimesWaitAfterConfigIsDeployedSeconds = "WaitTimes.WaitAfterConfigIsDeployedSeconds"
 const WaitTimesLoadTestDurationSeconds = "WaitTimes.LoadTestDurationSeconds"
 const WaitTimesWaitAfterLoadGeneratorIsDoneSeconds = "WaitTimes.WaitAfterLoadGeneratorIsDoneSeconds"
+const WaitTimesWaitAfterLoadGeneratorStartes = "WaitTimes.WaitAfterLoadGeneratorStartes"
 
 const TestName = "TestName"
 
@@ -55,3 +56,4 @@ const SLAConditionsFile = "SLAConditionsFile"
 const LoadGeneratorArgs = "LoadGenerator.Args"
 const LoadGeneratorType = "LoadGenerator.Type"
 const LoadGeneratorScriptPath = "LoadGenerator.ScriptPath"
+const LoadGeneratorCommand = "LoadGenerator.Command"

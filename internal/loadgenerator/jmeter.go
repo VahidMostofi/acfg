@@ -4,7 +4,6 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/vahidmostofi/acfg/internal/workload"
-	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -20,7 +19,7 @@ type JMeterLocalDocker struct {
 	feedback map[string]interface{}
 }
 
-func (j* JMeterLocalDocker) Start(workload *workload.Workload, reader io.Reader, extras map[string]string) error{
+func (j* JMeterLocalDocker) Start(workload *workload.Workload) error{
 	log.SetLevel(log.DebugLevel)
 	log.Debug("JMeterLocalDocker: reading content of script for load generator")
 
@@ -56,7 +55,7 @@ func (j* JMeterLocalDocker) Start(workload *workload.Workload, reader io.Reader,
 	log.Warnf("JMeterLocalDocker: removing combined output: " + string(b))
 
 	commandParts := strings.Split(j.Command, " ")
-	commandArgs := []string{"run", "--network", "host", "-d", "--rm", "--name", containerName, "-v", file.Name() + ":" + "/input.jmx", "vmarrazzo/jmeter"}
+	commandArgs := []string{"run", "--network", "host", "-d", "--rm", "--name", jMeterContainerName, "-v", file.Name() + ":" + "/input.jmx", "vmarrazzo/jmeter"}
 	commandArgs = append(commandArgs, commandParts...)
 	cmd := exec.Command("docker",  commandArgs...)
 	log.Debug("JMeterLocalDocker: ",cmd.String())
@@ -73,7 +72,7 @@ func (j* JMeterLocalDocker) Start(workload *workload.Workload, reader io.Reader,
 
 func (j* JMeterLocalDocker) Stop() error{
 	log.Debug("JMeterLocalDocker: Stopping load generator.")
-	removeCmd := exec.Command("docker", "container", "rm", "-f", containerName)
+	removeCmd := exec.Command("docker", "container", "rm", "-f", jMeterContainerName)
 	err := removeCmd.Run()
 
 	if err != nil{

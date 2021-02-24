@@ -169,6 +169,7 @@ func getWaitTimes() autocfg.WaitTimes{
 		WaitAfterConfigIsDeployed: time.Duration(viper.GetInt(constants.WaitTimesWaitAfterConfigIsDeployedSeconds)) * time.Second,
 		LoadTestDuration: time.Duration(viper.GetInt(constants.WaitTimesLoadTestDurationSeconds)) * time.Second,
 		WaitAfterLoadGeneratorIsDone: time.Duration(viper.GetInt(constants.WaitTimesWaitAfterLoadGeneratorIsDoneSeconds)) * time.Second,
+		WaitAfterLoadGeneratorStartes: time.Duration(viper.GetInt(constants.WaitTimesWaitAfterLoadGeneratorStartes)) * time.Second,
 	}
 	return w
 }
@@ -269,7 +270,7 @@ func getSLA() (*sla.SLA, error){
 	return sla, nil
 }
 
-func getLoadGenerator(w workload.Workload) (*loadgenerator.K6LocalLoadGenerator, error){
+func getLoadGenerator(w workload.Workload) (loadgenerator.LoadGenerator, error){
 	if strings.ToLower(viper.GetString(constants.LoadGeneratorType)) == "k6"{
 		lg := &loadgenerator.K6LocalLoadGenerator{Args: w}
 		r, err := os.Open(viper.GetString(constants.LoadGeneratorScriptPath))
@@ -279,6 +280,18 @@ func getLoadGenerator(w workload.Workload) (*loadgenerator.K6LocalLoadGenerator,
 		d, err := ioutil.ReadAll(r)
 		if err != nil {
 			return nil, errors.Wrap(err, "error while reading load generator script")
+		}
+		lg.Data = d
+		return lg, nil
+	} else if strings.ToLower(viper.GetString(constants.LoadGeneratorType)) == "jmeter" {
+		lg := &loadgenerator.JMeterLocalDocker{Command: viper.GetString(constants.LoadGeneratorCommand)}
+		r, err := os.Open(viper.GetString(constants.LoadGeneratorScriptPath))
+		if err != nil{
+			return nil, errors.Wrap(err, "error while getting load generator (jmeter)")
+		}
+		d, err := ioutil.ReadAll(r)
+		if err != nil {
+			return nil, errors.Wrap(err, "error while reading load generator script (jmeter)")
 		}
 		lg.Data = d
 		return lg, nil
