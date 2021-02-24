@@ -1,12 +1,20 @@
 - type: ResponseTime
+  endpointName: home
+  threshold: 0.25
+  computeFunctionName: percentile_90
+- type: ResponseTime
   endpointName: login
   threshold: 0.25
   computeFunctionName: percentile_90
 - type: ResponseTime
-  endpointName: get-book
+  endpointName: list-products
   threshold: 0.25
   computeFunctionName: percentile_90
 - type: ResponseTime
-  endpointName: edit-book
+  endpointName: look-at-produc
+  threshold: 0.25
+  computeFunctionName: percentile_90
+- type: ResponseTime
+  endpointName: add-to-cart
   threshold: 0.25
   computeFunctionName: percentile_90

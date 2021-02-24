@@ -23,67 +23,99 @@ WorkloadAggregator:
 SystemStructureAggregator:
   Type: "predefined"
   Endpoints2Resources:
+    "home":
+      - "persistence"
+      - "image"
+      - "auth"
+      - "webui"
+      - "registry"
     "login":
-      - "gateway"
+      - "persistence"
+      - "image"
       - "auth"
-    "get-book":
-      - "gateway"
-      - "books"
-    "edit-book":
-      - "gateway"
-      - "books"
+      - "webui"
+      - "registry"
+    "list-products":
+      - "persistence"
+      - "image"
+      - "auth"
+      - "webui"
+      - "registry"
+    "look-at-product":
+      - "persistence"
+      - "image"
+      - "auth"
+      - "webui"
+      - "registry"
+      - "recommender"
+    "add-to-cart":
+      - "persistence"
+      - "image"
+      - "auth"
+      - "webui"
+      - "registry"
+      - "recommender"
 EndpointsFilters:
-  "login":
-    "URI_REGEX": "login*"
-    "HTTP_METHOD": "POST"
-  "get-book":
-    "URI_REGEX": "books*"
+  "home":
+    "URI_REGEX": "tools.descartes.teastore.webui\\/\"$"
     "HTTP_METHOD": "GET"
-  "edit-book":
-    "URI_REGEX": "books*"
-    "HTTP_METHOD": "PUT"
+  "login":
+    "URI_REGEX": "tools.descartes.teastore.webui\\/loginAction"
+    "HTTP_METHOD": "POST"
+  "list-products":
+    "URI_REGEX": "tools.descartes.teastore.webui\\/category"
+    "HTTP_METHOD": "GET"
+  "look-at-product":
+    "URI_REGEX": "tools.descartes.teastore.webui\\/product*"
+    "HTTP_METHOD": "GET"
+  "add-to-cart":
+    "URI_REGEX": "tools.descartes.teastore.webui\\/cartAction"
+    "HTTP_METHOD": "POST"
 ResourceFilters:
-  "auth":
-    "POD_NAME_REGEX": "^auth-*"
-  "gateway":
-    "POD_NAME_REGEX": "^gateway-*"
-  "books":
-    "POD_NAME_REGEX": "^books-*"
+  "teastore-registry":
+    "POD_NAME_REGEX": "^teastore-registry-*"
+  "teastore-persistence":
+    "POD_NAME_REGEX": "^teastore-persistence-*"
+  "teastore-image":
+    "POD_NAME_REGEX": "^teastore-image-*"
+  "teastore-auth":
+    "POD_NAME_REGEX": "^teastore-auth-*"
+  "teastore-webui":
+    "POD_NAME_REGEX": "^teastore-webui-*"
+  "teastore-recommender":
+    "POD_NAME_REGEX": "^teastore-recommender-*"
 TargetSystem:
-  Name: "bookstore"
+  Name: "teastore"
   Namespace: "default"
-  TargetSystem:
-    DeploymentsToManage:
-      - "auth"
-      - "gateway"
-      - "bookstore"
+  DeploymentsToManage:
+    - "teastore-auth"
+    - "teastore-image"
+    - "teastore-webui"
+    - "teastore-registry"
+    - "teastore-persistence"
+    - "teastore-recommender"
   Workload:
-    Name: "the-workload-name"
+    Name: "jmeter-browse"
 ConfigurationValidation:
-  TotalMemory: 36864
-  TotalCPU: 4
+  TotalMemory: 56864
+  TotalCPU: 20
 AutoConfigure:
   UseCache: false
   CacheDatabaseType: "s3"
   CacheS3Region: "us-east-1"
   CacheS3Bucket: "acfg-vahid-configuration-database"
 Results:
-  Directory: "/home/vahid/Desktop/acfg-results/$TARGETSYSTEM.NAME/$TargetSystem.Workload.Name/$STRATEGY.NAME/"
+  Directory: "/home/vahid/acfg-results/$TARGETSYSTEM.NAME/$TargetSystem.Workload.Name/$STRATEGY.NAME/"
 
 WaitTimes:
-  WaitAfterConfigIsDeployedSeconds: 10
-  LoadTestDurationSeconds: 45
-  WaitAfterLoadGeneratorIsDoneSeconds: 10
+  WaitAfterLoadGeneratorStartes: 180
+  WaitAfterConfigIsDeployedSeconds: 60
+  LoadTestDurationSeconds: 180
+  WaitAfterLoadGeneratorIsDoneSeconds: 60
 
-SLAConditionsFile: "/home/vahid/Desktop/projects/acfg/sample-configs/slas/all250.yaml"
+SLAConditionsFile: "/home/vahid/workspace/acfg/sample-configs/slas/teastore-all-250.yaml"
 
 LoadGenerator:
-  Type: "k6"
-  ScriptPath: "/home/vahid/Desktop/temp.js"
-  Args:
-    args_vus: "20"
-    args_duration: "45s"
-    args_login_prob: "0.3"
-    args_getbook_prob: "0.1"
-    args_editbook_prob: "0.6"
-    args_sleep_duration: "0.5"
+  Type: "jmeter"
+  Command: "-t /input.jmx -Jhostname 172.21.0.2 -Jport 9099 -JnumUser 1 -JrampUp 1 -l mylogfile.log -n"
+  ScriptPath: "/home/vahid/workspace/t/teastore_browse_nogui_.jmx"

@@ -42,7 +42,7 @@ func TestK6LocalLoadGenerator_Start(t *testing.T) {
 	k.Data = d
 	// ---------------------
 	for i := 0;i < 4; i++{
-		err = k.Start(nil, nil)
+		err = k.Start(nil)
 		if err != nil{
 			panic(err)
 			t.Fail()

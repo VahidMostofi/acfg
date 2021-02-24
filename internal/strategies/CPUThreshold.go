@@ -47,8 +47,8 @@ func (ct *CPUThreshold) GetInitialConfiguration(workload *workload.Workload, agg
 		config[resource].CPU = int64Ptr(ct.initialCPU)
 		config[resource].Memory = int64Ptr(ct.initialMemory)
 		config[resource].ResourceType = "Deployment"
+		log.Infof("%s.GetInitialConfiguration(): initial config for %s: %v", ct.GetName(), resource, config[resource])
 	}
-
 	return config, nil
 }
 
