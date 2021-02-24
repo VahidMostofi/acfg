@@ -29,6 +29,7 @@ type WaitTimes struct{ // if anything is added to this, you need to update start
 	WaitAfterConfigIsDeployed time.Duration
 	LoadTestDuration time.Duration
 	WaitAfterLoadGeneratorIsDone time.Duration
+	WaitAfterLoadGeneratorStartes time.Duration
 }
 
 type ConfigurationValidation struct{
@@ -50,7 +51,7 @@ type AutoConfigManager struct{
 	storePathPrefix         string
 	cancelFunc              context.CancelFunc
 	sla						*sla.SLA
-	lg 						*loadgenerator.K6LocalLoadGenerator
+	lg 						loadgenerator.LoadGenerator
 }
 
 type AutoConfigManagerArgs struct{
@@ -67,10 +68,11 @@ type AutoConfigManagerArgs struct{
 	EndpointsFilter     map[string]map[string]interface{}
 	StorePathPrefix     string
 	SLA 				*sla.SLA
-	LoadGenerator		*loadgenerator.K6LocalLoadGenerator
+	LoadGenerator		loadgenerator.LoadGenerator
 }
 
 func NewAutoConfigManager(args *AutoConfigManagerArgs) (*AutoConfigManager,error){
+	log.Debugf("%s: deploymentsToManage: %v", "NewAutoConfigManager", args.DeploymentsToManage)
 	c, err := clustermanager.NewK8ClusterManager(args.Namespace, args.DeploymentsToManage)
 	if err != nil{
 		return nil, errors.Wrap(err, "error while creating kubernetes cluster clustermanager.")
@@ -235,13 +237,15 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 			log.Infof("AutoConfigManager.Run() configurations deployed and ready")
 
 			log.Infof("AutoConfigManager.Run() waiting %s.", a.waitTimes.WaitAfterConfigIsDeployed.String())
-			time.Sleep(a.waitTimes.WaitAfterConfigIsDeployed)
-
-			iterInfo.StartTime = time.Now().Unix()
+			time.Sleep(a.waitTimes.WaitAfterConfigIsDeployed)			
 
 			// start the load generator and wait a few seconds for it
 			log.Debugf("AutoConfigManager.Run() load generator is starting")
 			a.lg.Start(inputWorkload)
+			time.Sleep(a.waitTimes.WaitAfterLoadGeneratorStartes)
+
+			iterInfo.StartTime = time.Now().Unix()
+			log.Debugf("startTime is: %d", iterInfo.StartTime)
 
 			// wait for the specific duration and then stop the load generator
 			log.Infof("AutoConfigManager.Run() load generator is started, waiting %s while load generator is running.", a.waitTimes.LoadTestDuration.String())
@@ -250,6 +254,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 			iterInfo.LoadGeneratorFeedback, err = a.lg.GetFeedback()
 
 			iterInfo.FinishTime = time.Now().Unix()
+			log.Debugf("finishTime is: %d", iterInfo.FinishTime)
 			log.Infof("AutoConfigManager.Run() load generator is done, waiting %s.", a.waitTimes.WaitAfterLoadGeneratorIsDone.String())
 			time.Sleep(a.waitTimes.WaitAfterLoadGeneratorIsDone)
 			iterInfo.AggregatedData , err = a.aggregatedData(iterInfo.StartTime, iterInfo.FinishTime)
