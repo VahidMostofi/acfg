@@ -80,7 +80,7 @@ Optimizer = mo.MOBayesianOpt(target=objective,
                              RandomSeed=10)
 Optimizer.initialize(init_points=5) 
 # there is no minimize function. maximize() starts optimization. Performs minimizing or maximizing based on max_or_min
-front, pop = Optimizer.maximize(n_iter=20,
+front, pop = Optimizer.maximize(n_iter=40,
                                 prob=0.1,
                                 ReduceProb=False,
                                 q=0.5)
