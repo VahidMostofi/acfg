@@ -15,3 +15,6 @@
 # vendor/
 acfg
 *.env
+
+.vscode/
+__debug_bin
