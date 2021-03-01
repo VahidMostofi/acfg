@@ -152,6 +152,9 @@ func (pr *PythonRunner) ConfigureNextStep(currentConfig map[string]*configuratio
 			case suggestedValues = <-pr.configCh:
 				if len(suggestedValues) > 0 {
 					log.Println("PythonRunner: got the config")
+					log.Printf("PythonRunner: %v", suggestedValues)
+				} else {
+					log.Warn("PythonRunner: the len of suggested Values is 0")
 				}
 				wg.Done()
 				return

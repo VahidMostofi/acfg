@@ -36,6 +36,7 @@ const AutoConfigureUseCache = "AutoConfigure.UseCache" // bool
 const AutoConfigureCacheDatabaseType = "AutoConfigure.CacheDatabaseType"
 const AutoConfigureCacheS3Region = "AutoConfigure.CacheS3Region"
 const AutoConfigureCacheS3Bucket = "AutoConfigure.CacheS3Bucket"
+const AutoConfigureFSDirectory = "AutoConfigure.FSDirectory"
 
 const ResultsDirectory = "Results.Directory" // TODO do we need this? shouldn't we move to s3?
 
