@@ -1,0 +1,11 @@
+apiVersion: v1
+data:
+  JAEGER_COLLECTOR_HOST: 
+  JAEGER_COLLECTOR_PORT: "14268"
+  JAEGER_AGENT_HOST: 
+  JAEGER_AGENT_PORT: "6831"
+  SAMPELLING_PROB: "0"
+kind: ConfigMap
+metadata:
+  name: jaeger-config
+  namespace: bookstore
