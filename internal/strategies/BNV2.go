@@ -230,12 +230,12 @@ func (bnv2 *BNV2) ConfigureNextStep(currentConfig map[string]*configuration.Conf
 			bnv2.stage1Iterations = bnv2.iterationCount
 		}
 	} else { // we are in stage 2
-		bnv2.stage2Iterations++ // tracking iterations in stage 2
 
 		log.Debugf("BNV2.ConfigureNextStep(): iterations (1: %d, 2: %d)", bnv2.stage1Iterations, bnv2.stage2Iterations)
-		if bnv2.stage2Iterations >= bnv2.stage1Iterations {
+		if bnv2.stage2Iterations >= bnv2.stage1Iterations+1 { // +1 because the first iteration is not counted.
 			return nil, false, nil
 		}
+		bnv2.stage2Iterations++ // tracking iterations in stage 2
 	}
 
 	if totalPrev < bnv2.bestWhichMeets {
