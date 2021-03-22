@@ -144,7 +144,7 @@ export AWS_LOAD_BALANCER_CONTROLLER_NAME=aws-lb-controller
         --namespace kube-system \
         --wait
 
-    aws iam delete-policy --policy-arn arn:aws:iam::${ACCOUNT_ID}:policy/AWSLoadBalancerControllerIAMPolicy --wait
+    aws iam delete-policy --policy-arn arn:aws:iam::${ACCOUNT_ID}:policy/AWSLoadBalancerControllerIAMPolicy
 
     kubectl delete -k eks-charts/stable/aws-load-balancer-controller/crds
 
