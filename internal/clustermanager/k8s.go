@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"sync"
+	"time"
+
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/vahidmostofi/acfg/internal/configuration"
-	"io"
-	"io/ioutil"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -19,57 +22,55 @@ import (
 	v12 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
-	"sync"
-	"time"
 )
 
-type K8s struct{
-	clientSet *kubernetes.Clientset
-	namespace string
+type K8s struct {
+	clientSet        *kubernetes.Clientset
+	namespace        string
 	deploymentsNames []string
 }
 
-func NewK8ClusterManager(namespace string, deploymentNames []string) (ClusterManager, error){
+func NewK8ClusterManager(namespace string, deploymentNames []string) (ClusterManager, error) {
 	kubeconfig := "/home/vahid/.kube/config"
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil{
+	if err != nil {
 		panic(err)
 	}
 	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil{
+	if err != nil {
 		panic(err)
 	}
 
 	k := &K8s{
-		namespace: namespace,
+		namespace:        namespace,
 		deploymentsNames: deploymentNames,
-		clientSet: clientset,
+		clientSet:        clientset,
 	}
 
 	return k, nil
 }
 
-func (k *K8s) WaitAllDeploymentsAreStable(ctx context.Context){
+func (k *K8s) WaitAllDeploymentsAreStable(ctx context.Context) {
 	log.Debug("WaitAllDeploymentsAreStable() waiting for all deployments to be available.")
 	deploymentsClient := k.clientSet.AppsV1().Deployments(k.namespace)
 	wg := &sync.WaitGroup{}
-	for _, deploymentName := range k.deploymentsNames{
+	for _, deploymentName := range k.deploymentsNames {
 		wg.Add(1)
-		waitDeploymentHaveDesiredCondition(ctx, deploymentsClient,"NewReplicaSetAvailable", deploymentName,wg, 10)
+		waitDeploymentHaveDesiredCondition(ctx, deploymentsClient, "NewReplicaSetAvailable", deploymentName, wg, 10)
 	}
 	wg.Wait()
 	log.Debug("WaitAllDeploymentsAreStable() all deployments to be available.")
 }
 
-func (k *K8s) Deploy(ctx context.Context, reader io.Reader) error{
+func (k *K8s) Deploy(ctx context.Context, reader io.Reader) error {
 
 	b, err := ioutil.ReadAll(reader)
-	if err != nil{
+	if err != nil {
 		return errors.Wrap(err, "error while reading the reader")
 	}
 
 	obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(b, nil, nil)
-	if err != nil{
+	if err != nil {
 		return errors.Wrap(err, "error while decoding using UniversalSerializer")
 	}
 
@@ -77,7 +78,7 @@ func (k *K8s) Deploy(ctx context.Context, reader io.Reader) error{
 	case *v1.Deployment:
 		ptr := obj.DeepCopyObject().(*v1.Deployment)
 		_, err = k.clientSet.AppsV1().Deployments(k.namespace).Create(ctx, ptr, metav1.CreateOptions{})
-		if err != nil{
+		if err != nil {
 			return errors.Wrapf(err, "error while creating Deployment %s", ptr.Name)
 		}
 	default:
@@ -86,15 +87,15 @@ func (k *K8s) Deploy(ctx context.Context, reader io.Reader) error{
 	return nil
 }
 
-func (k *K8s) UpdateConfigurationsAndWait(ctx context.Context, config map[string]*configuration.Configuration) error{
+func (k *K8s) UpdateConfigurationsAndWait(ctx context.Context, config map[string]*configuration.Configuration) error {
 
 	wg := &sync.WaitGroup{}
-
+	fmt.Println("namespace is", k.namespace)
 	deploymentsClient := k.clientSet.AppsV1().Deployments(k.namespace)
-	for resourceName, c := range config{
+	for resourceName, c := range config {
 		log.Debugf("UpdateConfigurationsAndWait() updating deployment %s with %s", resourceName, c.String())
 		deploymentObj, getErr := deploymentsClient.Get(ctx, resourceName, metav1.GetOptions{})
-		if getErr != nil{
+		if getErr != nil {
 			log.Errorf("%s", getErr.Error()) //TODO this is not enoough
 			return errors.Wrap(getErr, fmt.Sprintf("failed to get latest version of Deployment: %s", resourceName))
 		}
@@ -118,10 +119,10 @@ func (k *K8s) UpdateConfigurationsAndWait(ctx context.Context, config map[string
 		wg.Add(1)
 		log.Debugf("UpdateConfigurationsAndWait() calling updateDeployment deployment %s", resourceName)
 		err := k.updateDeployment(ctx, deploymentObj)
-		if err != nil{
+		if err != nil {
 			return errors.Wrapf(err, "error while updating deployment for %s", deploymentObj.Name)
 		}
-		go waitDeploymentHaveDesiredCondition(ctx, deploymentsClient,"NewReplicaSetAvailable", deploymentObj.Name,wg, time.Second * 10)
+		go waitDeploymentHaveDesiredCondition(ctx, deploymentsClient, "NewReplicaSetAvailable", deploymentObj.Name, wg, time.Second*10)
 	}
 
 	wg.Wait()
@@ -135,7 +136,7 @@ func (k *K8s) updateDeployment(ctx context.Context, targetDeployment *v1.Deploym
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := deploymentsClient.Get(ctx, targetDeployment.Name, metav1.GetOptions{})
-		if getErr != nil{
+		if getErr != nil {
 			return errors.Wrap(getErr, fmt.Sprintf("failed to get latest version of Deployment: %s", targetDeployment.Name))
 		}
 		beforeBytes, _ := result.Marshal()
@@ -143,9 +144,9 @@ func (k *K8s) updateDeployment(ctx context.Context, targetDeployment *v1.Deploym
 		returned, updateErr := deploymentsClient.Update(ctx, targetDeployment, metav1.UpdateOptions{})
 		afterBytes, _ := returned.Marshal()
 
-		isChanged := bytes.Compare(afterBytes,beforeBytes) != 0
+		isChanged := bytes.Compare(afterBytes, beforeBytes) != 0
 		log.Debugf("updateDeployment() comparing before and after for deployment %s: %t", targetDeployment.Name, isChanged)
-		if isChanged{
+		if isChanged {
 			//waitDeploymentHaveDesiredCondition(ctx, deploymentsClient, "ReplicaSetUpdated", targetDeployment.Name,nil,10 * time.Second) //TODO 10 second is hard coded
 		}
 
@@ -156,30 +157,30 @@ func (k *K8s) updateDeployment(ctx context.Context, targetDeployment *v1.Deploym
 }
 
 // waitDeploymentHaveDesiredCondition only works with a single container ! //TODO
-func waitDeploymentHaveDesiredCondition (ctx context.Context, deploymentClient v12.DeploymentInterface, desiredReason string, deploymentName string, wg *sync.WaitGroup, interval time.Duration){
+func waitDeploymentHaveDesiredCondition(ctx context.Context, deploymentClient v12.DeploymentInterface, desiredReason string, deploymentName string, wg *sync.WaitGroup, interval time.Duration) {
 	log.Debugf("wating for container with condition %s for deployment %s", desiredReason, deploymentName)
-	wait.Poll(interval, 50*time.Minute, func() (bool, error){
+	wait.Poll(interval, 50*time.Minute, func() (bool, error) {
 		var flag bool
 		dep, err := deploymentClient.Get(ctx, deploymentName, metav1.GetOptions{})
-		if err != nil{
+		if err != nil {
 			panic(err)
 		}
 
-		for _,c := range dep.Status.Conditions {
+		for _, c := range dep.Status.Conditions {
 			log.Debugf("for %s got %s", deploymentName, c.Reason)
 			flag = c.Reason == desiredReason
-			if flag{
+			if flag {
 				break
 			}
 		}
-		if flag{
+		if flag {
 			log.Debugf("container with desired condition %s found for deployment %s", desiredReason, deploymentName)
 		}
 
 		return flag, nil
 	})
 	log.Debugf("done wating for container with condition %s for deployment %s", desiredReason, deploymentName)
-	if wg != nil{
+	if wg != nil {
 		wg.Done()
 	}
 }

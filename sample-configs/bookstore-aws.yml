@@ -1,0 +1,88 @@
+VersionCode: "v0"
+EndpointsAggregator:
+  Type: "influxdb"
+  Args:
+    URL: ""          # EndpointsAggregator.Args.URL
+    Token: ""
+    Bucket: ""
+    Organization: ""
+ResourceUsageAggregator:
+  Type: "influxdb"
+  Args:
+    URL: ""          # ResourceUsageAggregator.Args.URL
+    Token: ""
+    Bucket: ""
+    Organization: ""
+WorkloadAggregator:
+  Type: "influxdb"
+  Args:
+    URL: ""          # WorkloadAggregator.Args.URL
+    Token: ""
+    Bucket: ""
+    Organization: ""
+SystemStructureAggregator:
+  Type: "predefined"
+  Endpoints2Resources:
+    "login":
+      - "gateway"
+      - "auth"
+    "get-book":
+      - "gateway"
+      - "books"
+    "edit-book":
+      - "gateway"
+      - "books"
+EndpointsFilters:
+  "login":
+    "URI_REGEX": "login*"
+    "HTTP_METHOD": "POST"
+  "get-book":
+    "URI_REGEX": "books*"
+    "HTTP_METHOD": "GET"
+  "edit-book":
+    "URI_REGEX": "books*"
+    "HTTP_METHOD": "PUT"
+ResourceFilters:
+  "auth":
+    "POD_NAME_REGEX": "^auth-*"
+  "gateway":
+    "POD_NAME_REGEX": "^gateway-*"
+  "books":
+    "POD_NAME_REGEX": "^books-*"
+TargetSystem:
+  Name: "bookstore"
+  Namespace: "bookstore"
+  TargetSystem:
+    DeploymentsToManage:
+      - "auth"
+      - "gateway"
+      - "bookstore"
+  Workload:
+    Name: "aws-300-1.0"
+ConfigurationValidation:
+  TotalMemory: 80000
+  TotalCPU: 80
+AutoConfigure:
+  UseCache: true
+  CacheDatabaseType: "fs"
+  FSDirectory: "/home/vahid/Desktop/acfg-results/cache/"
+Results:
+  Directory: "/home/vahid/Desktop/acfg-results/$TARGETSYSTEM.NAME/$TargetSystem.Workload.Name/$STRATEGY.NAME/"
+
+WaitTimes:
+  WaitAfterConfigIsDeployedSeconds: 10
+  LoadTestDurationSeconds: 90
+  WaitAfterLoadGeneratorIsDoneSeconds: 10
+
+SLAConditionsFile: "/home/vahid/Desktop/projects/acfg/sample-configs/slas/bookstore-custom.yaml"
+
+LoadGenerator:
+  Type: "k6"
+  ScriptPath: "/home/vahid/Desktop/temp.js"
+  Args:
+    args_vus: "300"
+    args_duration: "90s"
+    args_login_prob: "0.3"
+    args_getbook_prob: "0.1"
+    args_editbook_prob: "0.6"
+    args_sleep_duration: "1.0"

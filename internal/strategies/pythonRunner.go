@@ -168,7 +168,7 @@ func (pr *PythonRunner) ConfigureNextStep(currentConfig map[string]*configuratio
 	newConfig := make(map[string]*configuration.Configuration)
 	for key := range currentConfig {
 		newConfig[key] = currentConfig[key].DeepCopy()
-		newConfig[key].UpdateEqualWithNewCPUValue(int64(suggestedValues[key].CPUAmount), 1000)
+		newConfig[key].UpdateEqualWithNewCPUValue(int64(suggestedValues[key].CPUAmount), 500)
 		isChanged = true
 	}
 	pr.index++
