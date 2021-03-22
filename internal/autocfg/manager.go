@@ -102,7 +102,7 @@ func (a *AutoConfigManager) aggregatedData(startTime, finishTime int64) (*aggreg
 	var err error
 
 	// response times
-	ag := &aggregators.AggregatedData{}
+	ag := &aggregators.AggregatedData{StartTime: &startTime, FinishTime: &finishTime}
 
 	// Response Times
 	ag.ResponseTimes, err = a.endpointsAggregator.GetEndpointsResponseTimes(startTime, finishTime)
