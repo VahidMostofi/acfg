@@ -58,3 +58,5 @@ const LoadGeneratorArgs = "LoadGenerator.Args"
 const LoadGeneratorType = "LoadGenerator.Type"
 const LoadGeneratorScriptPath = "LoadGenerator.ScriptPath"
 const LoadGeneratorCommand = "LoadGenerator.Command"
+
+const AutoScalingApproachName = "AutoScaling.ApproachName"

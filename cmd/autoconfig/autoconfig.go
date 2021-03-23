@@ -37,26 +37,29 @@ func init() {
 }
 
 func initConfigAutoConfigCmd(){
+	// if cfgFile == ""{
+	// 	fmt.Println("you must pass the config. use --config")
+	// 	os.Exit(1)
+	// } else {
 	if cfgFile == ""{
-		fmt.Println("you must pass the config. use --config")
-		os.Exit(1)
-	} else {
-		cfgFile = checkConfigFile(getAbsPathOfConfigFile(cfgFile))
-		viper.SetConfigFile(cfgFile)
-
-		if err := viper.ReadInConfig(); err == nil {
-			log.Info("Using config file:", viper.ConfigFileUsed())
-		}else { panic(err)}
-
-		viper.SetEnvPrefix("ACFG")
-		viper.AutomaticEnv()
-
-		replacer := strings.NewReplacer(".", "_")
-		viper.SetEnvKeyReplacer(replacer)
-		viper.MergeConfigMap(viper.AllSettings())
-
-		viper.Set(constants.TestName, testName)
+		return
 	}
+	cfgFile = checkConfigFile(getAbsPathOfConfigFile(cfgFile))
+	viper.SetConfigFile(cfgFile)
+
+	if err := viper.ReadInConfig(); err == nil {
+		log.Info("Using config file:", viper.ConfigFileUsed())
+	}else { panic(err)}
+
+	viper.SetEnvPrefix("ACFG")
+	viper.AutomaticEnv()
+
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
+	viper.MergeConfigMap(viper.AllSettings())
+
+	viper.Set(constants.TestName, testName)
+	// }
 	fmt.Println("initConfigAutoConfigCmd Done")
 }
 

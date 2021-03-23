@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/vahidmostofi/acfg/cmd/autoconfig"
+	"github.com/vahidmostofi/acfg/cmd/autoscaling"
 	"os"
 )
 
@@ -18,6 +19,7 @@ var rootCmd = &cobra.Command{
 
 func init()  {
 	rootCmd.AddCommand(autoconfig.AutoConfigCmd)
+	rootCmd.AddCommand(autoscaling.AutoScaleCmd)
 }
 
 func Execute() {
