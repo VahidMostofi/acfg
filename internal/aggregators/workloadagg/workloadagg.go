@@ -2,7 +2,6 @@ package workloadagg
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -52,7 +51,7 @@ func NewInfluxDBWA(url, token, organization, bucket string) (*InfluxDBWA, error)
 
 // GetWorkload ...
 func (i *InfluxDBWA) GetWorkload(startTime, finishTime int64, endpointFilters map[string]map[string]interface{}) (*workload.Workload, error) {
-	fmt.Println(startTime, finishTime, finishTime-startTime)
+	// fmt.Println(startTime, finishTime, finishTime-startTime)
 	if startTime >= finishTime {
 		return nil, errors.Errorf("for getting GetCPUUtilizations(), startTime must be less than finishTime")
 	}

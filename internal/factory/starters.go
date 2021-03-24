@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/vahidmostofi/acfg/internal/aggregators"
+	deploymentinfoagg "github.com/vahidmostofi/acfg/internal/aggregators/deploymentInfoAggregator"
 	"github.com/vahidmostofi/acfg/internal/aggregators/endpointsagg"
 	"github.com/vahidmostofi/acfg/internal/aggregators/sysstructureagg"
 	"github.com/vahidmostofi/acfg/internal/aggregators/ussageagg"
@@ -101,6 +102,26 @@ func getSystemStructure() (*sysstructureagg.SystemStructure, error) {
 	return ss, err
 }
 
+func newDeploymentAggregator() (deploymentinfoagg.DeploymentInfoAggregator, error) {
+	diagArgs := map[string]interface{}{
+		"url":          viper.Get(constants.EndpointsAggregatorArgsURL), //IF YOU CHANGED THIS, CHANGE THE ERROR BELOW
+		"token":        viper.Get(constants.EndpointsAggregatorArgsToken),
+		"organization": viper.Get(constants.EndpointsAggregatorArgsOrganization),
+		"bucket":       viper.Get(constants.EndpointsAggregatorArgsBucket),
+	}
+
+	di, err := deploymentinfoagg.NewDeploymentInfoAggregator(viper.GetString(constants.ResourceUsageAggregatorType), diagArgs)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error while creating ResourceUsageAggregator, these might be useful: \"%s, %s, %s, %s, %v",
+			viper.Get(constants.ResourceUsageAggregatorArgsURL),
+			"some token value",
+			viper.Get(constants.ResourceUsageAggregatorArgsOrganization),
+			viper.Get(constants.ResourceUsageAggregatorArgsBucket),
+		)
+	}
+	return di, nil
+}
+
 func GetResourceFilters() (map[string]map[string]interface{}, error) {
 	// resource filters
 	resourceFilters, err := parseMapMapInterface(viper.GetStringMap(constants.ResourceFilters))
@@ -186,6 +207,14 @@ func getWaitTimes() autocfg.WaitTimes {
 	return w
 }
 
+func NewAutoScalerManager() (*autocfg.AutoScalerManager, error) {
+	a, err := NewAutoConfigureManager()
+	return &autocfg.AutoScalerManager{
+		Replicas:          make(map[string]int),
+		AutoConfigManager: a,
+	}, err
+}
+
 // NewAutoConfigureManager returns new *AutoConfigManager
 //
 func NewAutoConfigureManager() (*autocfg.AutoConfigManager, error) {
@@ -239,6 +268,11 @@ func NewAutoConfigureManager() (*autocfg.AutoConfigManager, error) {
 		return nil, err
 	}
 
+	di, err := newDeploymentAggregator()
+	if err != nil {
+		return nil, err
+	}
+
 	args := &autocfg.AutoConfigManagerArgs{
 		Namespace:           viper.GetString(constants.TargetSystemNamespace),
 		DeploymentsToManage: viper.GetStringSlice(constants.TargetSystemDeploymentsToManage),
@@ -246,17 +280,18 @@ func NewAutoConfigureManager() (*autocfg.AutoConfigManager, error) {
 			TotalAvailableMemory: viper.GetInt64(constants.ConfigurationValidationTotalMemory),
 			TotalAvailableCPU:    viper.GetInt64(constants.ConfigurationValidationTotalCpu),
 		},
-		UsingHash:           viper.GetBool(constants.AutoConfigureUseCache),
-		ConfigDatabase:      cd,
-		WaitTimes:           getWaitTimes(),
-		EndpointsAggregator: ep,
-		SystemStructure:     ss,
-		UsageAggregator:     ug,
-		WorkloadAggregator:  wg,
-		EndpointsFilter:     epf,
-		StorePathPrefix:     getStoreDirectory(),
-		SLA:                 sla,
-		LoadGenerator:       lg,
+		UsingHash:                viper.GetBool(constants.AutoConfigureUseCache),
+		ConfigDatabase:           cd,
+		WaitTimes:                getWaitTimes(),
+		EndpointsAggregator:      ep,
+		SystemStructure:          ss,
+		UsageAggregator:          ug,
+		WorkloadAggregator:       wg,
+		EndpointsFilter:          epf,
+		StorePathPrefix:          getStoreDirectory(),
+		SLA:                      sla,
+		LoadGenerator:            lg,
+		DeploymentInfoAggregator: di,
 	}
 
 	acfgManager, err := autocfg.NewAutoConfigManager(args)

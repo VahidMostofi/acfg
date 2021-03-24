@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/vahidmostofi/acfg/internal/aggregators"
+	deploymentinfoagg "github.com/vahidmostofi/acfg/internal/aggregators/deploymentInfoAggregator"
 	"github.com/vahidmostofi/acfg/internal/aggregators/endpointsagg"
 	"github.com/vahidmostofi/acfg/internal/aggregators/sysstructureagg"
 	"github.com/vahidmostofi/acfg/internal/aggregators/ussageagg"
@@ -39,37 +40,39 @@ type ConfigurationValidation struct {
 }
 
 type AutoConfigManager struct {
-	clusterManager          clustermanager.ClusterManager
-	configurationValidation ConfigurationValidation
-	usingHash               bool
-	configDatabase          aggregators.ConfigDatabase
-	waitTimes               WaitTimes
-	endpointsAggregator     *endpointsagg.EndpointsAggregator
-	systemStructure         *sysstructureagg.SystemStructure
-	usageAggregator         *ussageagg.UsageAggregator
-	workloadAggregator      workloadagg.WorkloadAggregator
-	endpointsFilter         map[string]map[string]interface{}
-	storePathPrefix         string
-	cancelFunc              context.CancelFunc
-	sla                     *sla.SLA
-	lg                      loadgenerator.LoadGenerator
+	clusterManager           clustermanager.ClusterManager
+	configurationValidation  ConfigurationValidation
+	usingHash                bool
+	configDatabase           aggregators.ConfigDatabase
+	waitTimes                WaitTimes
+	endpointsAggregator      *endpointsagg.EndpointsAggregator
+	systemStructure          *sysstructureagg.SystemStructure
+	usageAggregator          *ussageagg.UsageAggregator
+	workloadAggregator       workloadagg.WorkloadAggregator
+	endpointsFilter          map[string]map[string]interface{}
+	storePathPrefix          string
+	cancelFunc               context.CancelFunc
+	sla                      *sla.SLA
+	lg                       loadgenerator.LoadGenerator
+	deploymentInfoAggregator deploymentinfoagg.DeploymentInfoAggregator
 }
 
 type AutoConfigManagerArgs struct {
-	Namespace           string
-	DeploymentsToManage []string
-	CfgValidation       ConfigurationValidation
-	UsingHash           bool
-	ConfigDatabase      aggregators.ConfigDatabase
-	WaitTimes           WaitTimes
-	EndpointsAggregator *endpointsagg.EndpointsAggregator
-	SystemStructure     *sysstructureagg.SystemStructure
-	UsageAggregator     *ussageagg.UsageAggregator
-	WorkloadAggregator  workloadagg.WorkloadAggregator
-	EndpointsFilter     map[string]map[string]interface{}
-	StorePathPrefix     string
-	SLA                 *sla.SLA
-	LoadGenerator       loadgenerator.LoadGenerator
+	Namespace                string
+	DeploymentsToManage      []string
+	CfgValidation            ConfigurationValidation
+	UsingHash                bool
+	ConfigDatabase           aggregators.ConfigDatabase
+	WaitTimes                WaitTimes
+	EndpointsAggregator      *endpointsagg.EndpointsAggregator
+	SystemStructure          *sysstructureagg.SystemStructure
+	UsageAggregator          *ussageagg.UsageAggregator
+	WorkloadAggregator       workloadagg.WorkloadAggregator
+	EndpointsFilter          map[string]map[string]interface{}
+	StorePathPrefix          string
+	SLA                      *sla.SLA
+	LoadGenerator            loadgenerator.LoadGenerator
+	DeploymentInfoAggregator deploymentinfoagg.DeploymentInfoAggregator
 }
 
 func NewAutoConfigManager(args *AutoConfigManagerArgs) (*AutoConfigManager, error) {
@@ -80,24 +83,25 @@ func NewAutoConfigManager(args *AutoConfigManagerArgs) (*AutoConfigManager, erro
 	}
 
 	a := &AutoConfigManager{
-		clusterManager:          c,
-		configurationValidation: args.CfgValidation,
-		usingHash:               args.UsingHash,
-		configDatabase:          args.ConfigDatabase,
-		waitTimes:               args.WaitTimes,
-		endpointsAggregator:     args.EndpointsAggregator,
-		systemStructure:         args.SystemStructure,
-		usageAggregator:         args.UsageAggregator,
-		workloadAggregator:      args.WorkloadAggregator,
-		endpointsFilter:         args.EndpointsFilter,
-		storePathPrefix:         args.StorePathPrefix,
-		sla:                     args.SLA,
-		lg:                      args.LoadGenerator,
+		clusterManager:           c,
+		configurationValidation:  args.CfgValidation,
+		usingHash:                args.UsingHash,
+		configDatabase:           args.ConfigDatabase,
+		waitTimes:                args.WaitTimes,
+		endpointsAggregator:      args.EndpointsAggregator,
+		systemStructure:          args.SystemStructure,
+		usageAggregator:          args.UsageAggregator,
+		workloadAggregator:       args.WorkloadAggregator,
+		endpointsFilter:          args.EndpointsFilter,
+		storePathPrefix:          args.StorePathPrefix,
+		sla:                      args.SLA,
+		lg:                       args.LoadGenerator,
+		deploymentInfoAggregator: args.DeploymentInfoAggregator,
 	}
 	return a, nil
 }
 
-func (a *AutoConfigManager) aggregatedData(startTime, finishTime int64) (*aggregators.AggregatedData, error) {
+func (a *AutoConfigManager) aggregateData(startTime, finishTime int64) (*aggregators.AggregatedData, error) {
 	log.Debugf("aggregating data")
 	var err error
 
@@ -125,7 +129,16 @@ func (a *AutoConfigManager) aggregatedData(startTime, finishTime int64) (*aggreg
 	if err != nil {
 		return nil, errors.Wrap(err, "error while getting the CPU utilizations")
 	}
-	// Memory TODO
+	// Memory //TODO
+	//TODO DeploymentInfoAggregator
+
+	ag.DeploymentInfos = make(map[string]*deploymentinfoagg.DeploymentInfo)
+	for name := range a.systemStructure.GetResources2Endpoints() {
+		ag.DeploymentInfos[name], err = a.deploymentInfoAggregator.GetDeploymentInfo(name, startTime, finishTime, make(map[string]interface{}))
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	return ag, nil
 }
@@ -256,7 +269,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 			log.Debugf("finishTime is: %d", iterInfo.FinishTime)
 			log.Infof("AutoConfigManager.Run() load generator is done, waiting %s.", a.waitTimes.WaitAfterLoadGeneratorIsDone.String())
 			time.Sleep(a.waitTimes.WaitAfterLoadGeneratorIsDone)
-			iterInfo.AggregatedData, err = a.aggregatedData(iterInfo.StartTime, iterInfo.FinishTime)
+			iterInfo.AggregatedData, err = a.aggregateData(iterInfo.StartTime, iterInfo.FinishTime)
 			if err != nil {
 				return errors.Wrapf(err, "error while aggregating data from %d to %d", iterInfo.StartTime, iterInfo.FinishTime)
 			}

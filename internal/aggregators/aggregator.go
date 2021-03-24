@@ -1,6 +1,7 @@
 package aggregators
 
 import (
+	deploymentinfoagg "github.com/vahidmostofi/acfg/internal/aggregators/deploymentInfoAggregator"
 	"github.com/vahidmostofi/acfg/internal/aggregators/restime"
 	"github.com/vahidmostofi/acfg/internal/aggregators/sysstructureagg"
 	"github.com/vahidmostofi/acfg/internal/aggregators/utilizations"
@@ -14,6 +15,7 @@ type AggregatedData struct {
 	HappenedWorkload *workload.Workload                       `yaml:"workload"`
 	StartTime        *int64                                   `yaml:"startTime"`
 	FinishTime       *int64                                   `yaml:"finishTime"`
+	DeploymentInfos  map[string]*deploymentinfoagg.DeploymentInfo
 }
 
 func (ag *AggregatedData) GetMinMaxResourcesBasedOnCPUUtil(endpoint string) (string, string) {

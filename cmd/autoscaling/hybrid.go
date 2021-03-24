@@ -3,9 +3,9 @@ package autoscaling
 import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/vahidmostofi/acfg/internal/autoscalers"
 	"github.com/vahidmostofi/acfg/internal/constants"
 	"github.com/vahidmostofi/acfg/internal/factory"
-	"github.com/vahidmostofi/acfg/internal/autoscalers"
 )
 
 var allocationsFile string
@@ -18,18 +18,18 @@ var hybridAutoscalerCmd = &cobra.Command{
 	Short: "hybrid combines hpa with pre-configured.",
 	Long:  "hybrid combines hpa with pre-configured.",
 	Run: func(cmd *cobra.Command, args []string) {
-		autoscalingAgent, err := autoscalers.NewHybridAutoscaler(getEndpoints(), getResources())
-		if err != nil{
+		autoscalingAgent, err := autoscalers.NewHybridAutoscaler(getEndpoints(), getResources(), hpaCpuUPercentageThreshold)
+		if err != nil {
 			panic(err)
 		}
 		viper.Set(constants.AutoScalingApproachName, autoscalingAgent.GetName())
 
-		acfgManager, err := factory.NewAutoConfigureManager()
+		autoScalerManager, err := factory.NewAutoScalerManager()
 		if err != nil {
 			panic(err)
 		}
-		
-		err = acfgManager.RunAutoscaler(viper.GetString(constants.TestName), autoscalingAgent, intervalSeconds)
+
+		err = autoScalerManager.Run(viper.GetString(constants.TestName), autoscalingAgent, intervalSeconds)
 		if err != nil {
 			panic(err)
 		}
