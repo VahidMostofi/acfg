@@ -60,3 +60,5 @@ const LoadGeneratorScriptPath = "LoadGenerator.ScriptPath"
 const LoadGeneratorCommand = "LoadGenerator.Command"
 
 const AutoScalingApproachName = "AutoScaling.ApproachName"
+
+const KubeConfigPath = "KubeConfigPath"

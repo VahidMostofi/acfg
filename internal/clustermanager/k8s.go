@@ -11,7 +11,9 @@ import (
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"github.com/vahidmostofi/acfg/internal/configuration"
+	"github.com/vahidmostofi/acfg/internal/constants"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -31,7 +33,7 @@ type K8s struct {
 }
 
 func NewK8ClusterManager(namespace string, deploymentNames []string) (ClusterManager, error) {
-	kubeconfig := "/home/vahid/.kube/config"
+	kubeconfig := viper.GetString(constants.KubeConfigPath)
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		panic(err)
