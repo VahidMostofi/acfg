@@ -110,7 +110,12 @@ func newDeploymentAggregator() (deploymentinfoagg.DeploymentInfoAggregator, erro
 		"bucket":       viper.Get(constants.EndpointsAggregatorArgsBucket),
 	}
 
-	di, err := deploymentinfoagg.NewDeploymentInfoAggregator(viper.GetString(constants.ResourceUsageAggregatorType), diagArgs)
+	resources, err := GetResources()
+	if err != nil {
+		return nil, err
+	}
+
+	di, err := deploymentinfoagg.NewDeploymentInfoAggregator(viper.GetString(constants.ResourceUsageAggregatorType), diagArgs, resources)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error while creating ResourceUsageAggregator, these might be useful: \"%s, %s, %s, %s, %v",
 			viper.Get(constants.ResourceUsageAggregatorArgsURL),
@@ -130,6 +135,18 @@ func GetResourceFilters() (map[string]map[string]interface{}, error) {
 		return nil, errors.Errorf("cant find resource filters in configs using: %s with type map[string]map[string]interface{}", constants.ResourceFilters)
 	}
 	return resourceFilters, nil
+}
+
+func GetResources() ([]string, error) {
+	t, err := GetResourceFilters()
+	if err != nil {
+		return nil, err
+	}
+	res := make([]string, 0)
+	for v := range t {
+		res = append(res, v)
+	}
+	return res, nil
 }
 
 func newResourceUsageAggregator() (*ussageagg.UsageAggregator, error) {
@@ -160,11 +177,16 @@ func newResourceUsageAggregator() (*ussageagg.UsageAggregator, error) {
 
 func newWorkloadAggregator() (workloadagg.WorkloadAggregator, error) {
 	if viper.GetString(constants.WorkloadAggregatorType) == "influxdb" {
+		epf, err := GetEndpointsFilters()
+		if err != nil {
+			return nil, err
+		}
+
 		url := viper.GetString(constants.WorkloadAggregatorArgsURL)
 		token := viper.GetString(constants.WorkloadAggregatorArgsToken)
 		organization := viper.GetString(constants.WorkloadAggregatorArgsOrganization)
 		bucket := viper.GetString(constants.WorkloadAggregatorArgsBucket)
-		wg, err := workloadagg.NewInfluxDBWA(url, token, organization, bucket)
+		wg, err := workloadagg.NewInfluxDBWA(url, token, organization, bucket, epf)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error while creating workload aggregator with %s %s %s %s", url, "some token", organization, bucket)
 		}
@@ -361,4 +383,45 @@ func getLoadGenerator(w workload.Workload) (loadgenerator.LoadGenerator, error) 
 	}
 
 	return nil, errors.New("unknown load generator type " + viper.GetString(constants.LoadGeneratorType))
+}
+
+type EnsembleAggregatorArgs struct {
+	WithEndpointsAggregator  bool
+	WithWorkloadAggregator   bool
+	WithUsageAggregator      bool
+	WithDeploymentAggregator bool
+}
+
+func NewEnsembleAggregator(eaa EnsembleAggregatorArgs) (*aggregators.Ensemble, error) {
+	var err error
+	e := &aggregators.Ensemble{}
+	if eaa.WithEndpointsAggregator {
+		e.Endpoints, err = newEndpointsAggregator()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if eaa.WithWorkloadAggregator {
+		e.Workload, err = newWorkloadAggregator()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if eaa.WithUsageAggregator {
+		e.Usage, err = newResourceUsageAggregator()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if eaa.WithDeploymentAggregator {
+		e.DeploymentInfo, err = newDeploymentAggregator()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return e, nil
 }

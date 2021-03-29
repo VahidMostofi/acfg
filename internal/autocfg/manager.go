@@ -115,7 +115,7 @@ func (a *AutoConfigManager) aggregateData(startTime, finishTime int64) (*aggrega
 	}
 
 	// Workload
-	ag.HappenedWorkload, err = a.workloadAggregator.GetWorkload(startTime, finishTime, a.endpointsFilter)
+	ag.HappenedWorkload, err = a.workloadAggregator.GetWorkload(startTime, finishTime)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while getting the workload that happened")
 	}

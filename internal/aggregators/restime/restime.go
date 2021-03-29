@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/montanaflynn/stats"
@@ -21,6 +22,12 @@ import (
 // available filters: HTTP_METHOD, URI_REGEX
 type ResponseTimeAggregator interface {
 	GetResponseTimes(startTime, finishTime int64, filters map[string]interface{}) (*ResponseTimes, error)
+	GetTimeStampedResponseTimes(startTime, finishTime int64, filters map[string]interface{}) ([]TimestampedResponseTime, error)
+}
+
+type TimestampedResponseTime struct {
+	Timestamp    time.Time `json:"ts"`
+	ResponseTime float64   `json:"rs"`
 }
 
 // ResponseTimes is a named type for []float64 with helper functions
@@ -117,18 +124,14 @@ func NewInfluxDBRTA(url, token, organization, bucket string) (*InfluxDBRTA, erro
 	return i, nil
 }
 
-// GetResponseTimes ....
-func (i *InfluxDBRTA) GetResponseTimes(startTime, finishTime int64, filters map[string]interface{}) (*ResponseTimes, error) {
-	if startTime >= finishTime {
-		return nil, errors.Errorf("for getting GetCPUUtilizations(), startTime must be less than finishTime")
-	}
+func (i *InfluxDBRTA) buildQuery(startTime, finishTime int64, filters map[string]interface{}) string {
 	query := `
-from(bucket: "$BUCKET_NAME")
-  |> range(start: $START_TIME, stop: $FINISH_TIME)
-  |> filter(fn: (r) => r["_measurement"] == "request_info" and r._field == "ust" $CONDITIONS)
-  |> group()
-  |> keep(columns: ["_time", "_value"])
-`
+	from(bucket: "$BUCKET_NAME")
+		|> range(start: $START_TIME, stop: $FINISH_TIME)
+		|> filter(fn: (r) => r["_measurement"] == "request_info" and r._field == "ust" $CONDITIONS)
+		|> group()
+		|> keep(columns: ["_time", "_value"])
+	`
 	query = strings.Replace(query, "$BUCKET_NAME", i.bucket, -1)
 	query = strings.Replace(query, "$START_TIME", strconv.FormatInt(startTime, 10), -1)
 	query = strings.Replace(query, "$FINISH_TIME", strconv.FormatInt(finishTime, 10), -1)
@@ -146,6 +149,37 @@ from(bucket: "$BUCKET_NAME")
 	query = strings.Replace(query, "$CONDITIONS", conditions, -1)
 
 	log.Debug("getting response times from influxdb with query:\n" + query)
+
+	return query
+}
+
+func (i *InfluxDBRTA) GetTimeStampedResponseTimes(startTime, finishTime int64, filters map[string]interface{}) ([]TimestampedResponseTime, error) {
+	if startTime >= finishTime {
+		return nil, errors.Errorf("for getting GetCPUUtilizations(), startTime must be less than finishTime")
+	}
+
+	query := i.buildQuery(startTime, finishTime, filters)
+
+	times, values, err := dataaccess.QuerySingleTable(i.qAPI, i.ctx, query, "_value")
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting response times from influxdb using:\n"+query)
+	}
+
+	res := make([]TimestampedResponseTime, len(times))
+	for i, _ := range times {
+		res[i] = TimestampedResponseTime{Timestamp: times[i], ResponseTime: values[i]}
+	}
+
+	return res, nil
+}
+
+// GetResponseTimes ....
+func (i *InfluxDBRTA) GetResponseTimes(startTime, finishTime int64, filters map[string]interface{}) (*ResponseTimes, error) {
+	if startTime >= finishTime {
+		return nil, errors.Errorf("for getting GetCPUUtilizations(), startTime must be less than finishTime")
+	}
+
+	query := i.buildQuery(startTime, finishTime, filters)
 
 	_, values, err := dataaccess.QuerySingleTable(i.qAPI, i.ctx, query, "_value")
 	if err != nil {

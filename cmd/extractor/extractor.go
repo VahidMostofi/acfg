@@ -1,4 +1,4 @@
-package autoscaling
+package extractor
 
 import (
 	"fmt"
@@ -14,49 +14,50 @@ import (
 	"strings"
 
 	"github.com/vahidmostofi/acfg/internal/factory"
+	"github.com/vahidmostofi/acfg/internal/historyextractor"
 )
 
 var (
 	cfgFile string
 )
 
-var AutoScaleCmd = &cobra.Command{
-	Use:   "autoscaling",
-	Short: "autoscaling gathers metrics and work as a manager for autoscaling",
-	Long:  `autoscaling gathers metrics and work as a manager for autoscaling. It exposes the configuration for the current workload through an API.`,
+var ExtractorCmd = &cobra.Command{
+	Use:   "extract",
+	Short: "extract history info about the system",
+	Long:  `extract history info about the system`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Do Stuff Here
+		historyextractor.DumpHistory()
 	},
 }
 
 func init() {
 	cobra.OnInitialize(initAutoScalerCmd)
-	AutoScaleCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (there is not default)")
-	AutoScaleCmd.MarkPersistentFlagRequired("config")
+	ExtractorCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (there is not default)")
+	ExtractorCmd.MarkPersistentFlagRequired("config")
 
 }
 
 func initAutoScalerCmd() {
 	if cfgFile == "" {
 		fmt.Println("you must pass the config. use --config")
-		return
-	}
-	cfgFile = checkConfigFile(getAbsPathOfConfigFile(cfgFile))
-	viper.SetConfigFile(cfgFile)
-
-	if err := viper.ReadInConfig(); err == nil {
-		log.Info("Using config file:", viper.ConfigFileUsed())
+		os.Exit(1)
 	} else {
-		panic(err)
+		cfgFile = checkConfigFile(getAbsPathOfConfigFile(cfgFile))
+		viper.SetConfigFile(cfgFile)
+
+		if err := viper.ReadInConfig(); err == nil {
+			log.Info("Using config file:", viper.ConfigFileUsed())
+		} else {
+			panic(err)
+		}
+
+		viper.SetEnvPrefix("ACFG")
+		viper.AutomaticEnv()
+
+		replacer := strings.NewReplacer(".", "_")
+		viper.SetEnvKeyReplacer(replacer)
+		viper.MergeConfigMap(viper.AllSettings())
 	}
-
-	viper.SetEnvPrefix("ACFG")
-	viper.AutomaticEnv()
-
-	replacer := strings.NewReplacer(".", "_")
-	viper.SetEnvKeyReplacer(replacer)
-	viper.MergeConfigMap(viper.AllSettings())
-
 	fmt.Println("initAutoScalerCmd Done")
 }
 
