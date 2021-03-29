@@ -65,5 +65,6 @@ func getNewClient(url, token string) influxdb2.Client {
 	options.SetTLSConfig(&tls.Config{
 		InsecureSkipVerify: true,
 	})
+	options.SetHTTPRequestTimeout(3600)
 	return influxdb2.NewClientWithOptions(url, token, options)
 }

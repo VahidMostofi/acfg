@@ -15,20 +15,21 @@ import (
 
 // WorkloadAggregator somehow returns the workload which was running between specific times
 type WorkloadAggregator interface {
-	GetWorkload(startTime, finishTime int64, endpointFilters map[string]map[string]interface{}) (*workload.Workload, error)
+	GetWorkload(startTime, finishTime int64) (*workload.Workload, error)
 }
 
 // InfluxDBWA ...
 type InfluxDBWA struct {
-	qAPI   api.QueryAPI
-	ctx    context.Context
-	cnF    context.CancelFunc
-	org    string
-	bucket string
+	qAPI            api.QueryAPI
+	ctx             context.Context
+	cnF             context.CancelFunc
+	org             string
+	bucket          string
+	endpointFilters map[string]map[string]interface{}
 }
 
 // NewInfluxDBWA returns a new InfluxDBWA
-func NewInfluxDBWA(url, token, organization, bucket string) (*InfluxDBWA, error) {
+func NewInfluxDBWA(url, token, organization, bucket string, endpointFilters map[string]map[string]interface{}) (*InfluxDBWA, error) {
 	if len(strings.Trim(url, " ")) == 0 {
 		return nil, errors.Errorf("the argument %s cant be empty string", "url")
 	}
@@ -43,14 +44,14 @@ func NewInfluxDBWA(url, token, organization, bucket string) (*InfluxDBWA, error)
 	}
 
 	ctx, cnF := context.WithCancel(context.Background())
-	i := &InfluxDBWA{ctx: ctx, cnF: cnF, org: organization, bucket: bucket}
+	i := &InfluxDBWA{ctx: ctx, cnF: cnF, org: organization, bucket: bucket, endpointFilters: endpointFilters}
 	i.qAPI = dataaccess.GetNewClientAndQueryAPI(url, token, organization)
 
 	return i, nil
 }
 
 // GetWorkload ...
-func (i *InfluxDBWA) GetWorkload(startTime, finishTime int64, endpointFilters map[string]map[string]interface{}) (*workload.Workload, error) {
+func (i *InfluxDBWA) GetWorkload(startTime, finishTime int64) (*workload.Workload, error) {
 	// fmt.Println(startTime, finishTime, finishTime-startTime)
 	if startTime >= finishTime {
 		return nil, errors.Errorf("for getting GetCPUUtilizations(), startTime must be less than finishTime")
@@ -58,7 +59,7 @@ func (i *InfluxDBWA) GetWorkload(startTime, finishTime int64, endpointFilters ma
 
 	w := make(map[string]string)
 
-	for endpointName, filters := range endpointFilters {
+	for endpointName, filters := range i.endpointFilters {
 		query := `
 from(bucket: "$BUCKET_NAME")
   |> range(start: $START_TIME, stop: $FINISH_TIME)

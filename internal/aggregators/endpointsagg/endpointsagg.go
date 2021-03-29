@@ -9,7 +9,7 @@ type Endpoint struct {
 	Name string
 }
 
-type EndpointsAggregator struct{
+type EndpointsAggregator struct {
 	responseTimeAggregator restime.ResponseTimeAggregator
 	endpointFilters        map[string]map[string]interface{}
 }
@@ -18,10 +18,10 @@ type EndpointsAggregator struct{
 // uses endpoint filters to select which endpoints' response times to gather. Current filters: HTTP_METHOD, URI_REGEX
 // available kinds: influxdb
 // for influxdb, it uses the url, token, organization and bucket pass them in args which is map[string]interface{}
-func NewEndpointsAggregator(kind string, args map[string]interface{}, endpointFilters map[string]map[string]interface{})(*EndpointsAggregator, error){
+func NewEndpointsAggregator(kind string, args map[string]interface{}, endpointFilters map[string]map[string]interface{}) (*EndpointsAggregator, error) {
 	u := &EndpointsAggregator{}
 	var err error
-	if kind == "influxdb"{
+	if kind == "influxdb" {
 		u.responseTimeAggregator, err = restime.NewInfluxDBRTA(
 			args["url"].(string),
 			args["token"].(string),
@@ -29,13 +29,13 @@ func NewEndpointsAggregator(kind string, args map[string]interface{}, endpointFi
 			args["bucket"].(string),
 		)
 
-		if err != nil{
+		if err != nil {
 			return nil, errors.Wrap(err, "cant create InfluxDBRTA")
 		}
 
 		u.endpointFilters = endpointFilters
 
-	}else{
+	} else {
 		return nil, errors.Errorf("unknown kind: %s", kind)
 	}
 
@@ -43,8 +43,8 @@ func NewEndpointsAggregator(kind string, args map[string]interface{}, endpointFi
 }
 
 func (e *EndpointsAggregator) GetListOfEndpointsBeingTracked() []*Endpoint {
-	endpoints := make([]*Endpoint,0)
-	for resourceName := range e.endpointFilters{
+	endpoints := make([]*Endpoint, 0)
+	for resourceName := range e.endpointFilters {
 		endpoints = append(endpoints, &Endpoint{resourceName})
 	}
 
@@ -54,10 +54,24 @@ func (e *EndpointsAggregator) GetListOfEndpointsBeingTracked() []*Endpoint {
 func (e *EndpointsAggregator) GetEndpointsResponseTimes(startTime, finishTime int64) (map[string]*restime.ResponseTimes, error) {
 	result := make(map[string]*restime.ResponseTimes)
 
-	for _, r := range e.GetListOfEndpointsBeingTracked(){
+	for _, r := range e.GetListOfEndpointsBeingTracked() {
 		_responseTimes, err := e.responseTimeAggregator.GetResponseTimes(startTime, finishTime, e.endpointFilters[r.Name])
 		if err != nil {
-			return nil, errors.Wrap(err, "error while getting response times for " + r.Name)
+			return nil, errors.Wrap(err, "error while getting response times for "+r.Name)
+		}
+		result[r.Name] = _responseTimes
+	}
+
+	return result, nil
+}
+
+func (e *EndpointsAggregator) GetEndpointsResponseTimesWithTimestamp(startTime, finishTime int64) (map[string][]restime.TimestampedResponseTime, error) {
+	result := make(map[string][]restime.TimestampedResponseTime)
+
+	for _, r := range e.GetListOfEndpointsBeingTracked() {
+		_responseTimes, err := e.responseTimeAggregator.GetTimeStampedResponseTimes(startTime, finishTime, e.endpointFilters[r.Name])
+		if err != nil {
+			return nil, errors.Wrap(err, "error while getting response times for "+r.Name)
 		}
 		result[r.Name] = _responseTimes
 	}
