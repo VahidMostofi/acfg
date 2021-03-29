@@ -62,3 +62,7 @@ const LoadGeneratorCommand = "LoadGenerator.Command"
 const AutoScalingApproachName = "AutoScaling.ApproachName"
 
 const KubeConfigPath = "KubeConfigPath"
+
+const DumpStartTime = "DumpStartTime"
+const DumpFinishTime = "DumpFinishTime"
+const DumpOutputPath = "DumpOutputPath"
