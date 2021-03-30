@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/montanaflynn/stats"
@@ -26,8 +25,8 @@ type ResponseTimeAggregator interface {
 }
 
 type TimestampedResponseTime struct {
-	Timestamp    time.Time `json:"ts"`
-	ResponseTime float64   `json:"rs"`
+	Timestamp    int64   `json:"ts"`
+	ResponseTime float64 `json:"rs"`
 }
 
 // ResponseTimes is a named type for []float64 with helper functions
@@ -167,7 +166,7 @@ func (i *InfluxDBRTA) GetTimeStampedResponseTimes(startTime, finishTime int64, f
 
 	res := make([]TimestampedResponseTime, len(times))
 	for i, _ := range times {
-		res[i] = TimestampedResponseTime{Timestamp: times[i], ResponseTime: values[i]}
+		res[i] = TimestampedResponseTime{Timestamp: times[i].Unix(), ResponseTime: values[i]}
 	}
 
 	return res, nil

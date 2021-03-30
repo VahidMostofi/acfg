@@ -4,7 +4,6 @@ import (
 	"context"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/labstack/gommon/log"
@@ -18,7 +17,7 @@ type DeploymentInfo struct {
 }
 
 type TimestampedDeploymentInfo struct {
-	Timestamp      time.Time       `json:"ts"`
+	Timestamp      int64           `json:"ts"`
 	DeploymentInfo *DeploymentInfo `json:"di"`
 }
 
@@ -88,7 +87,7 @@ from(bucket: "$BUCKET_NAME")
 		}
 		temp := make([]TimestampedDeploymentInfo, len(times))
 		for i, _ := range times {
-			temp[i] = TimestampedDeploymentInfo{times[i], &DeploymentInfo{Replica: int(values[i])}}
+			temp[i] = TimestampedDeploymentInfo{times[i].Unix(), &DeploymentInfo{Replica: int(values[i])}}
 		}
 		result[resource] = temp
 	}

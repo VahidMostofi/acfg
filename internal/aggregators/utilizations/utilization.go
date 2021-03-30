@@ -4,7 +4,6 @@ import (
 	"context"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/montanaflynn/stats"
@@ -25,8 +24,8 @@ type CPUUtilizationAggregator interface {
 }
 
 type TimestampedUsage struct {
-	Timestamp      time.Time `json:"ts"`
-	CPUUtilization float64   `json:"cpu"`
+	Timestamp      int64   `json:"ts"`
+	CPUUtilization float64 `json:"cpu"`
 }
 
 // CPUUtilizations is a named type for []float64 with helper functions
@@ -176,7 +175,7 @@ func (i *InfluxDBCPUUA) GetCPUUtilizationsWithTimestamp(startTime, finishTime in
 
 	r := make([]TimestampedUsage, len(times))
 	for i, _ := range times {
-		r[i] = TimestampedUsage{Timestamp: times[i], CPUUtilization: values[i]}
+		r[i] = TimestampedUsage{Timestamp: times[i].Unix(), CPUUtilization: values[i]}
 	}
 
 	return r, nil
