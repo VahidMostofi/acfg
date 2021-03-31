@@ -18,7 +18,7 @@ var hybridAutoscalerCmd = &cobra.Command{
 	Short: "hybrid combines hpa with pre-configured.",
 	Long:  "hybrid combines hpa with pre-configured.",
 	Run: func(cmd *cobra.Command, args []string) {
-		autoscalingAgent, err := autoscalers.NewHybridAutoscaler(getEndpoints(), getResources(), hpaCpuUPercentageThreshold)
+		autoscalingAgent, err := autoscalers.NewHybridAutoscaler(getEndpoints(), getResources(), hpaCpuUPercentageThreshold, allocationsFile)
 		if err != nil {
 			panic(err)
 		}

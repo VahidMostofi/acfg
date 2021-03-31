@@ -3,9 +3,10 @@ module github.com/vahidmostofi/acfg
 go 1.15
 
 require (
-	github.com/aws/aws-sdk-go v1.36.26
+	github.com/aws/aws-sdk-go v1.38.0
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/go-chi/chi/v5 v5.0.1
+	github.com/guregu/dynamo v1.10.3
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/influxdata/influxdb-client-go/v2 v2.2.1
 	github.com/joho/godotenv v1.3.0
