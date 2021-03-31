@@ -28,6 +28,7 @@ func (k *K6LocalLoadGenerator) Start(workload *workload.Workload) error {
 	if k.Args != nil {
 		log.Debugf("K6LocalLoadGenerator: replacing k.Args information on script content")
 		for key, value := range k.Args {
+			key = strings.ToLower(key)
 			log.Debugf("K6LocalLoadGenerator: replacing %s with %s", key, value)
 			scriptContent = strings.ReplaceAll(scriptContent, key, value)
 		}
