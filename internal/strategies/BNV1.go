@@ -53,8 +53,9 @@ func (bnv1 *BNV1) GetInitialConfiguration(workload *workload.Workload, aggData *
 	return config, nil
 }
 
-func (bnv1 *BNV1) ConfigureNextStep(currentConfig map[string]*configuration.Configuration, workload *workload.Workload, aggData *aggregators.AggregatedData) (map[string]*configuration.Configuration, bool, error) {
+func (bnv1 *BNV1) ConfigureNextStep(currentConfig map[string]*configuration.Configuration, workload *workload.Workload, aggData *aggregators.AggregatedData) (map[string]*configuration.Configuration, map[string]interface{}, bool, error) {
 	isChanged := false
+	extraInfo := make(map[string]interface{})
 	newConfig := make(map[string]*configuration.Configuration)
 
 	initialCPUCount := make(map[string]int64)
@@ -104,7 +105,7 @@ func (bnv1 *BNV1) ConfigureNextStep(currentConfig map[string]*configuration.Conf
 		}
 	}
 
-	return newConfig, isChanged, nil
+	return newConfig, extraInfo, isChanged, nil
 }
 
 func getConditionsMatchingEndpoint(endpoint string, conditions []sla.Condition) []sla.Condition {

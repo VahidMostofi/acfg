@@ -1,12 +1,12 @@
 - type: ResponseTime
   endpointName: login
-  threshold: 0.2
+  threshold: 0.250
   computeFunctionName: percentile_95
 - type: ResponseTime
   endpointName: get-book
-  threshold: 0.02
+  threshold: 0.025
   computeFunctionName: percentile_95
 - type: ResponseTime
   endpointName: edit-book
-  threshold: 0.02
+  threshold: 0.025
   computeFunctionName: percentile_95
