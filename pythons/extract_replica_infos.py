@@ -6,8 +6,11 @@ try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
-workload_range_conditions_file = "workload_ranges_no_replicas.json"
-results_path = "/home/vahid/acfg-results/bookstore/OnlineShoppingStore/BNV2/"
+
+workload_name = sys.argv[1] #'train_23_test_24_1x'
+workload_range_conditions_file = sys.argv[2] # 'workload_ranges_top_10_bin_25_no_replica_train_sorted.json'
+results_path = sys.argv[3] # "/home/vahid/acfg-results/bookstore/OnlineShoppingStore/BNV2/"
+output_name = sys.argv[4] # 'workload_ranges_top_10_bin_25_with_replica_train_sorted.json' 
 with open(workload_range_conditions_file) as f:
   workload_ranges=json.load(f)
 
@@ -15,8 +18,10 @@ for idx, item in enumerate(workload_ranges):
   sub_name = str(idx)
   if len(sub_name) == 1:
     sub_name = "0" + sub_name
-  file_name = "predefined_configs_" + sub_name + ".yaml"
+  file_name = "predefined_configs_" + workload_name + '_' + sub_name + ".yaml"
 
+  if not os.path.exists(results_path + file_name):
+    break
   with open(results_path + file_name) as f:
     data = load(f, Loader=Loader)
   best_config = {}
@@ -34,6 +39,6 @@ for idx, item in enumerate(workload_ranges):
     best_replicas[key] = value['replicacount']
   
   workload_ranges[idx]["replicas"] = best_replicas
-  break
-with open('./workload_ranges_with_replicas.json','w') as f:
+
+with open(output_name,'w') as f:
   json.dump(workload_ranges, f,indent=4, sort_keys=True)

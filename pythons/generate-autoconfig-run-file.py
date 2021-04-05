@@ -5,6 +5,12 @@ import math
 endpoints = ["login", "getbook", "editbook"]
 workload_range_conditions_file = sys.argv[1]
 
+workload_name=sys.argv[2]
+
+if len(sys.argv) < 3: 
+  print('you must pass 2 args')
+  os.exit(1)
+
 with open(workload_range_conditions_file) as f:
   workload_ranges=json.load(f)
 
@@ -40,7 +46,7 @@ for idx, item in enumerate(workload_ranges):
     envs += "export ACFG_LOADGENERATOR_ARGS_ARGS"+endpoint.upper()+"PROB=\""+str(workload_range[endpoint]["high"]/total)+"\""
   envs += "\n"
   envs += "export ACFG_LOADGENERATOR_ARGS_ARGSSLEEPDURATION=\"0.5\"\n"
-  envs += "export ACFG_TESTNAME=predefined_configs_" + sub_name + "\n"
+  envs += "export ACFG_TESTNAME=predefined_configs_" + workload_name + '_' + sub_name + "\n"
   
   
   command += envs + "\n"
