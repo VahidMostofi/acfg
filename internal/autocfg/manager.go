@@ -185,7 +185,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 	a.cancelFunc = cnF
 	// adding SLA to strategy
 	autoConfigStrategyAgent.AddSLA(a.sla)
-
+	log.Infof("starting test \"%s\"", testName)
 	testInformation := &TestInformation{
 		Name:                    testName,
 		AutoconfiguringApproach: autoConfigStrategyAgent.GetName(),
@@ -214,6 +214,7 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 			Configuration:         currentConfig,
 			AggregatedData:        nil,
 			LoadGeneratorFeedback: nil,
+			StrategyInfo:          nil,
 		}
 
 		if a.usingHash {
@@ -295,14 +296,16 @@ func (a *AutoConfigManager) Run(testName string, autoConfigStrategyAgent strateg
 		}
 		log.Infof("workload that happend during this iteration: %s", iterInfo.AggregatedData.HappenedWorkload.String())
 
+		// pass all these information(data+) to the auto configuring agent and get the new configuration from it
+		newConfig, extraInfo, isChanged, err := autoConfigStrategyAgent.ConfigureNextStep(iterInfo.Configuration, inputWorkload, iterInfo.AggregatedData)
+		iterInfo.StrategyInfo = extraInfo
+
 		testInformation.Iterations = append(testInformation.Iterations, iterInfo)
 		err = a.storeTestInformation(testInformation)
 		if err != nil {
 			return errors.Wrapf(err, "error while saving aggregated results.")
 		}
 
-		// pass all these information(data+) to the auto configuring agent and get the new configuration from it
-		newConfig, isChanged, err := autoConfigStrategyAgent.ConfigureNextStep(iterInfo.Configuration, inputWorkload, iterInfo.AggregatedData)
 		isDone := !isChanged
 		doneReason := ""
 		if err != nil {

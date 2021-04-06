@@ -45,7 +45,7 @@ const WaitTimesLoadTestDurationSeconds = "WaitTimes.LoadTestDurationSeconds"
 const WaitTimesWaitAfterLoadGeneratorIsDoneSeconds = "WaitTimes.WaitAfterLoadGeneratorIsDoneSeconds"
 const WaitTimesWaitAfterLoadGeneratorStartes = "WaitTimes.WaitAfterLoadGeneratorStartes"
 
-const TestName = "TestName"
+const TestName = "testname"
 
 const TargetSystemWorkload = "TargetSystem.Workload"
 const TargetSystemWorkloadName = "TargetSystem.Workload.Name"
@@ -66,3 +66,5 @@ const KubeConfigPath = "KubeConfigPath"
 const DumpStartTime = "DumpStartTime"
 const DumpFinishTime = "DumpFinishTime"
 const DumpOutputPath = "DumpOutputPath"
+
+const InfluxDBCustomCRTFile = "InfluxDBCustomCRTFile"

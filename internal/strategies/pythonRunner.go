@@ -91,7 +91,7 @@ func (pr *PythonRunner) GetInitialConfiguration(workload *workload.Workload, agg
 }
 
 // ConfigureNextStep ...
-func (pr *PythonRunner) ConfigureNextStep(currentConfig map[string]*configuration.Configuration, workload *workload.Workload, aggData *aggregators.AggregatedData) (map[string]*configuration.Configuration, bool, error) {
+func (pr *PythonRunner) ConfigureNextStep(currentConfig map[string]*configuration.Configuration, workload *workload.Workload, aggData *aggregators.AggregatedData) (map[string]*configuration.Configuration, map[string]interface{}, bool, error) {
 	isChanged := false
 	if pr.index == 0 {
 		pr.configCh = make(chan map[string]serviceConfig)
@@ -127,7 +127,7 @@ func (pr *PythonRunner) ConfigureNextStep(currentConfig map[string]*configuratio
 			} else {
 				v, e := rst.GetPercentile(95)
 				if e != nil {
-					return nil, false, errors.Wrap(e, "error while getting 95 percentile of response time")
+					return nil, nil, false, errors.Wrap(e, "error while getting 95 percentile of response time")
 				}
 				values = append(values, v)
 			}
@@ -163,7 +163,7 @@ func (pr *PythonRunner) ConfigureNextStep(currentConfig map[string]*configuratio
 	}()
 	wg.Wait()
 	if len(suggestedValues) == 0 {
-		return nil, false, nil
+		return nil, nil, false, nil
 	}
 	newConfig := make(map[string]*configuration.Configuration)
 	for key := range currentConfig {
@@ -172,5 +172,5 @@ func (pr *PythonRunner) ConfigureNextStep(currentConfig map[string]*configuratio
 		isChanged = true
 	}
 	pr.index++
-	return newConfig, isChanged, nil
+	return newConfig, nil, isChanged, nil
 }

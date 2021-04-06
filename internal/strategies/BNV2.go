@@ -37,6 +37,8 @@ type BNV2 struct {
 	stage2IsStarted  bool
 }
 
+const Safety = 0.95
+
 func NewBNV2(initialDelta int64, endpoints []string, resources []string, initialCPU, initialMemory, maxCPUPerReplica, minimumCPUValue, minimumDelta int64) (*BNV2, error) {
 	log.Debugf("NewBNV2: initalDelta: %d, initialCPU: %d, initialMemory: %d, maxCPUPerReplica: %d, minimumCPUValue: %d, minimumDelta: %d", initialDelta, initialCPU, initialMemory, maxCPUPerReplica, minimumCPUValue, minimumDelta)
 	c := &BNV2{
@@ -92,8 +94,9 @@ func (bnv2 *BNV2) GetInitialConfiguration(workload *workload.Workload, aggData *
 	return config, nil
 }
 
-func (bnv2 *BNV2) ConfigureNextStep(currentConfig map[string]*configuration.Configuration, workload *workload.Workload, aggData *aggregators.AggregatedData) (map[string]*configuration.Configuration, bool, error) {
+func (bnv2 *BNV2) ConfigureNextStep(currentConfig map[string]*configuration.Configuration, workload *workload.Workload, aggData *aggregators.AggregatedData) (map[string]*configuration.Configuration, map[string]interface{}, bool, error) {
 	isChanged := false
+	extraInfo := make(map[string]interface{})
 	bnv2.iterationCount++
 	newConfig := make(map[string]*configuration.Configuration)
 
@@ -113,13 +116,14 @@ func (bnv2 *BNV2) ConfigureNextStep(currentConfig map[string]*configuration.Conf
 			log.Debugf("BNV2.ConfigureNextStep(): condition %v for endpoint %s", condition, endpoint)
 			if strings.Compare(condition.Type, sla.SLAConditionTypeResponseTime) == 0 {
 				requiredValue := condition.GetComputeFunction()(*aggData.ResponseTimes[endpoint])
-				if requiredValue > condition.Threshold {
+				if requiredValue > condition.Threshold*Safety {
 					doMeet = false
-					log.Debugf("BNV2.ConfigureNextStep(): endpoint %s does'nt meet the SLA. %f > %f", endpoint, requiredValue, condition.Threshold)
+					log.Debugf("BNV2.ConfigureNextStep(): endpoint %s does'nt meet the SLA. %f > %f (%f)", endpoint, requiredValue, condition.Threshold, condition.Threshold*Safety)
 					break
 				}
 			}
 		}
+
 		if !doMeet { // this endpoint is not meeting the SLA
 			allMeet = false
 			_, resourceWithMaxCPUUtil := aggData.GetMinMaxResourcesBasedOnCPUUtil(endpoint)
@@ -132,10 +136,11 @@ func (bnv2 *BNV2) ConfigureNextStep(currentConfig map[string]*configuration.Conf
 				finalCPUCount[resourceWithMaxCPUUtil] = newCPUValue
 				isChanged = true
 			} else {
-				return nil, false, fmt.Errorf("BNV2.ConfigureNextStep(): the increaseValue must be positive. Something is wrong.")
+				return nil, extraInfo, false, fmt.Errorf("BNV2.ConfigureNextStep(): the increaseValue must be positive. Something is wrong.")
 			}
 		}
 	}
+	extraInfo["doMeet"] = allMeet
 	if allMeet || bnv2.stage2IsStarted {
 		log.Infof("BNV2.ConfigureNextStep(): all endpoints are meeting the required SLAs, starting second stage.")
 		bnv2.stage2IsStarted = true
@@ -210,7 +215,7 @@ func (bnv2 *BNV2) ConfigureNextStep(currentConfig map[string]*configuration.Conf
 					log.Println("BNV2.ConfigureNextStep():", serviceToDecrease, "updating total CPU count from", prev, "to", finalCPUCount[serviceToDecrease])
 					isChanged = true
 				} else {
-					return nil, false, fmt.Errorf("BNV2.ConfigureNextStep(): the increaseValue must be positive")
+					return nil, extraInfo, false, fmt.Errorf("BNV2.ConfigureNextStep(): the increaseValue must be positive")
 				}
 			}
 		}
@@ -233,7 +238,7 @@ func (bnv2 *BNV2) ConfigureNextStep(currentConfig map[string]*configuration.Conf
 
 		log.Debugf("BNV2.ConfigureNextStep(): iterations (1: %d, 2: %d)", bnv2.stage1Iterations, bnv2.stage2Iterations)
 		if bnv2.stage2Iterations >= bnv2.stage1Iterations+1 { // +1 because the first iteration is not counted.
-			return nil, false, nil
+			return nil, extraInfo, false, nil
 		}
 		bnv2.stage2Iterations++ // tracking iterations in stage 2
 	}
@@ -251,12 +256,12 @@ func (bnv2 *BNV2) ConfigureNextStep(currentConfig map[string]*configuration.Conf
 	}
 	h := getConfigHash(newConfig)
 	if _, exists := bnv2.cache[h]; exists {
-		return nil, false, nil
+		return nil, extraInfo, false, nil
 	} else {
 		bnv2.cache[h] = totalNew
 	}
 
-	return newConfig, isChanged, nil
+	return newConfig, extraInfo, isChanged, nil
 }
 
 func getConfigHash(in map[string]*configuration.Configuration) string {

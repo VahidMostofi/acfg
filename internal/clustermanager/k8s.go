@@ -92,7 +92,7 @@ func (k *K8s) Deploy(ctx context.Context, reader io.Reader) error {
 func (k *K8s) UpdateConfigurationsAndWait(ctx context.Context, config map[string]*configuration.Configuration) error {
 
 	wg := &sync.WaitGroup{}
-	fmt.Println("namespace is", k.namespace)
+	log.Infof("namespace is \"%s\"", k.namespace)
 	deploymentsClient := k.clientSet.AppsV1().Deployments(k.namespace)
 	for resourceName, c := range config {
 		log.Debugf("UpdateConfigurationsAndWait() updating deployment %s with %s", resourceName, c.String())

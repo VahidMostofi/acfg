@@ -6,10 +6,8 @@ import (
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	"github.com/vahidmostofi/acfg/internal/aggregators"
 	"github.com/vahidmostofi/acfg/internal/configuration"
-	"github.com/vahidmostofi/acfg/internal/constants"
 	"github.com/vahidmostofi/acfg/internal/workload"
 	"k8s.io/apimachinery/pkg/util/json"
 )
@@ -29,7 +27,7 @@ func GetHash(c map[string]*configuration.Configuration, version string, inputWor
 	}
 	b = append(b, temp...)
 
-	b = append(b, []byte(viper.GetString(constants.TestName))...)
+	// b = append(b, []byte(viper.GetString(constants.TestName))...)
 
 	log.Debugf("hashing with %s", string(b))
 	s := md5.Sum(b)
@@ -43,6 +41,7 @@ type IterationInformation struct {
 	FinishTime            int64                                   `yaml:"finishTime"`
 	AggregatedData        *aggregators.AggregatedData             `yaml:"aggregatedData"`
 	LoadGeneratorFeedback map[string]interface{}                  `yaml:"loadGeneratorFeedback"`
+	StrategyInfo          map[string]interface{}                  `yaml:"strategyInfo"`
 }
 
 type TestInformation struct {
