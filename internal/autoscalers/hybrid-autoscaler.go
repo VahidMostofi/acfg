@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math"
 	"time"
 
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"github.com/vahidmostofi/acfg/internal/aggregators"
 	"github.com/vahidmostofi/acfg/internal/workload"
 
@@ -18,29 +18,33 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
-func NewHybridAutoscaler(endpoints, resources []string, hpaThreshold int64, predefinedReplicasFilepath string) (Agent, error) {
+func NewHybridAutoscaler(endpoints, resources []string, hpaThreshold int64, predefinedReplicasFilepath string, usecount int) (Agent, error) {
 	h := &Hybrid{
 		endpoints:        endpoints,
 		resources:        resources,
 		hpaThreshold:     hpaThreshold,
 		cooldown:         0,
+		usecount:         usecount,
 		previousReplicas: make([]map[string]int, 0),
+		lastReplicas:     make(map[string]int),
 	}
 
-	b, err := ioutil.ReadFile(predefinedReplicasFilepath)
-	if err != nil {
-		return nil, err
-	}
+	if h.usecount > 0 {
+		b, err := ioutil.ReadFile(predefinedReplicasFilepath)
+		if err != nil {
+			return nil, err
+		}
 
-	h.predefinedReplicas = make([]ReplicasForWorkloadRange, 0)
-	err = json.Unmarshal(b, &h.predefinedReplicas)
-	if err != nil {
-		return nil, err
-	}
+		h.predefinedReplicas = make([]ReplicasForWorkloadRange, 0)
+		err = json.Unmarshal(b, &h.predefinedReplicas)
+		if err != nil {
+			return nil, err
+		}
 
-	for _, rwr := range h.predefinedReplicas {
-		if rwr.Replicas == nil || len(rwr.Replicas) == 0 {
-			return nil, errors.Errorf("there must a replica configuration for each workload range.")
+		for _, rwr := range h.predefinedReplicas {
+			if rwr.Replicas == nil || len(rwr.Replicas) == 0 {
+				return nil, errors.Errorf("there must a replica configuration for each workload range.")
+			}
 		}
 	}
 
@@ -66,6 +70,8 @@ type Hybrid struct {
 	previousReplicas   []map[string]int
 	sess               *session.Session
 	svc                *dynamodb.DynamoDB
+	usecount           int
+	lastReplicas       map[string]int
 }
 
 func (h *Hybrid) GetName() string {
@@ -74,7 +80,7 @@ func (h *Hybrid) GetName() string {
 
 // checkForConfigAvailability //TODO write how this works
 func (h *Hybrid) checkForConfigAvailability(happendWorkload workload.Workload) (map[string]int, error) {
-	fmt.Println(happendWorkload.GetMapStringInt())
+	// fmt.Println(happendWorkload.GetMapStringInt())
 	return nil, nil
 }
 
@@ -91,7 +97,8 @@ func (h *Hybrid) Evaluate(aggData *aggregators.AggregatedData) (map[string]int, 
 		currentReplicas := aggData.DeploymentInfos[name].Replica
 		meanCPUUtilization, err := cpuU.GetMean()
 		if err != nil {
-			panic(err) //TODO maybe we should try again.
+			supportingData["error"] = err
+			break
 		}
 		(supportingData["cpu-mean"].(map[string]float64))[name] = meanCPUUtilization
 		(supportingData["current-replica"].(map[string]int))[name] = currentReplicas
@@ -111,9 +118,11 @@ func (h *Hybrid) Evaluate(aggData *aggregators.AggregatedData) (map[string]int, 
 			currentReplicas := aggData.DeploymentInfos[name].Replica
 			meanCPUUtilization, err := cpuU.GetMean()
 			if err != nil {
-				panic(err) //TODO maybe we should try again.
+				replicas[name] = h.lastReplicas[name]
+				log.Info("lastReplicas are being use due an error in getting mean cpu utilzation for " + name + ".")
+			} else {
+				replicas[name] = int(math.Ceil(float64(currentReplicas) * (meanCPUUtilization / float64(h.hpaThreshold))))
 			}
-			replicas[name] = int(math.Ceil(float64(currentReplicas) * (meanCPUUtilization / float64(h.hpaThreshold))))
 		}
 		// this is commented, because we are using the same feature in custom-pod-autoscaler
 		// h.addReplicaInfoToPreviousReplicaInfos(replicas)
@@ -125,6 +134,9 @@ func (h *Hybrid) Evaluate(aggData *aggregators.AggregatedData) (map[string]int, 
 	}
 
 	h.logScalingDecision(takenApproach, replicas, supportingData)
+	for key, value := range replicas {
+		h.lastReplicas[key] = value
+	}
 	return replicas, nil
 }
 
