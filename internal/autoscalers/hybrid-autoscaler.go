@@ -97,7 +97,7 @@ func (h *Hybrid) Evaluate(aggData *aggregators.AggregatedData) (map[string]int, 
 		currentReplicas := aggData.DeploymentInfos[name].Replica
 		meanCPUUtilization, err := cpuU.GetMean()
 		if err != nil {
-			supportingData["error"] = err
+			supportingData["error"] = err.Error()
 			break
 		}
 		(supportingData["cpu-mean"].(map[string]float64))[name] = meanCPUUtilization
