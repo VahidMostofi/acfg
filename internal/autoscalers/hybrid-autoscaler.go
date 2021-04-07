@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"github.com/vahidmostofi/acfg/internal/aggregators"
 	"github.com/vahidmostofi/acfg/internal/workload"
 
@@ -18,29 +19,39 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
-func NewHybridAutoscaler(endpoints, resources []string, hpaThreshold int64, predefinedReplicasFilepath string) (Agent, error) {
+func NewHybridAutoscaler(endpoints, resources []string, hpaThreshold int64, predefinedReplicasFilepath string, usecount int) (Agent, error) {
 	h := &Hybrid{
 		endpoints:        endpoints,
 		resources:        resources,
 		hpaThreshold:     hpaThreshold,
 		cooldown:         0,
+		usecount:         usecount,
 		previousReplicas: make([]map[string]int, 0),
+		lastReplicas:     make(map[string]int),
 	}
 
-	b, err := ioutil.ReadFile(predefinedReplicasFilepath)
-	if err != nil {
-		return nil, err
-	}
+	if h.usecount > 0 {
+		b, err := ioutil.ReadFile(predefinedReplicasFilepath)
+		if err != nil {
+			return nil, err
+		}
 
-	h.predefinedReplicas = make([]ReplicasForWorkloadRange, 0)
-	err = json.Unmarshal(b, &h.predefinedReplicas)
-	if err != nil {
-		return nil, err
-	}
+		h.predefinedReplicas = make([]ReplicasForWorkloadRange, 0)
+		err = json.Unmarshal(b, &h.predefinedReplicas)
+		if err != nil {
+			return nil, err
+		}
 
-	for _, rwr := range h.predefinedReplicas {
-		if rwr.Replicas == nil || len(rwr.Replicas) == 0 {
-			return nil, errors.Errorf("there must a replica configuration for each workload range.")
+		for _, rwr := range h.predefinedReplicas {
+			if rwr.Replicas == nil || len(rwr.Replicas) == 0 {
+				return nil, errors.Errorf("there must a replica configuration for each workload range.")
+			}
+		}
+
+		for _, pdr := range h.predefinedReplicas {
+			for key, value := range pdr.WorkloadRange {
+				pdr.WorkloadRange[strings.ReplaceAll(key, "-", "")] = value
+			}
 		}
 	}
 
@@ -66,6 +77,8 @@ type Hybrid struct {
 	previousReplicas   []map[string]int
 	sess               *session.Session
 	svc                *dynamodb.DynamoDB
+	usecount           int
+	lastReplicas       map[string]int
 }
 
 func (h *Hybrid) GetName() string {
@@ -74,7 +87,25 @@ func (h *Hybrid) GetName() string {
 
 // checkForConfigAvailability //TODO write how this works
 func (h *Hybrid) checkForConfigAvailability(happendWorkload workload.Workload) (map[string]int, error) {
-	fmt.Println(happendWorkload.GetMapStringInt())
+	for i, pdr := range h.predefinedReplicas {
+		if i >= h.usecount {
+			continue
+		}
+		flag := true
+		for endpoint, requestCount := range happendWorkload.GetMapStringInt() {
+			endpoint = strings.ReplaceAll(endpoint, "-", "")
+			rcf := float32(requestCount)
+			log.Debugf("%f %f %f", pdr.WorkloadRange[endpoint].Low, rcf, pdr.WorkloadRange[endpoint].High)
+			if !(pdr.WorkloadRange[endpoint].Low <= rcf && pdr.WorkloadRange[endpoint].High >= rcf) {
+				flag = false
+				break
+			}
+		}
+		if flag {
+			fmt.Println("found by predefineds", pdr.Replicas)
+			return pdr.Replicas, nil
+		}
+	}
 	return nil, nil
 }
 
@@ -91,7 +122,8 @@ func (h *Hybrid) Evaluate(aggData *aggregators.AggregatedData) (map[string]int, 
 		currentReplicas := aggData.DeploymentInfos[name].Replica
 		meanCPUUtilization, err := cpuU.GetMean()
 		if err != nil {
-			panic(err) //TODO maybe we should try again.
+			supportingData["error"] = err.Error()
+			break
 		}
 		(supportingData["cpu-mean"].(map[string]float64))[name] = meanCPUUtilization
 		(supportingData["current-replica"].(map[string]int))[name] = currentReplicas
@@ -121,10 +153,14 @@ func (h *Hybrid) Evaluate(aggData *aggregators.AggregatedData) (map[string]int, 
 		// 	replicas[name] = int(math.Max(float64(replicas[name]), float64(getMaxPreviousReplicasForResource(name, h.previousReplicas))))
 		// }
 	} else {
+		takenApproach = "predefined"
 		replicas = suggestedReplicaCounts
 	}
 
 	h.logScalingDecision(takenApproach, replicas, supportingData)
+	for key, value := range replicas {
+		h.lastReplicas[key] = value
+	}
 	return replicas, nil
 }
 

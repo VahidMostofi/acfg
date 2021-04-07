@@ -9,7 +9,7 @@ import (
 )
 
 var allocationsFile string
-var numberOfConfigsToUse int64
+var numberOfConfigsToUse int
 var hpaCpuUPercentageThreshold int64
 var intervalSeconds int64
 
@@ -18,7 +18,12 @@ var hybridAutoscalerCmd = &cobra.Command{
 	Short: "hybrid combines hpa with pre-configured.",
 	Long:  "hybrid combines hpa with pre-configured.",
 	Run: func(cmd *cobra.Command, args []string) {
-		autoscalingAgent, err := autoscalers.NewHybridAutoscaler(getEndpoints(), getResources(), hpaCpuUPercentageThreshold, allocationsFile)
+
+		if numberOfConfigsToUse > 0 && len(allocationsFile) == 0 {
+			panic("if usecount > 0, the path to configs file (allocationsFile) should be passed.")
+		}
+
+		autoscalingAgent, err := autoscalers.NewHybridAutoscaler(getEndpoints(), getResources(), hpaCpuUPercentageThreshold, allocationsFile, numberOfConfigsToUse)
 		if err != nil {
 			panic(err)
 		}
@@ -38,9 +43,8 @@ var hybridAutoscalerCmd = &cobra.Command{
 
 func init() {
 	hybridAutoscalerCmd.Flags().StringVar(&allocationsFile, "allocationsFile", "", "the path to resource allocations for the predefined configurations.")
-	hybridAutoscalerCmd.MarkFlagRequired("allocationsFile")
 
-	hybridAutoscalerCmd.Flags().Int64Var(&numberOfConfigsToUse, "usecount", 0, "how many of the configs in the resource allocation file should be used. -1 for all")
+	hybridAutoscalerCmd.Flags().IntVar(&numberOfConfigsToUse, "usecount", 0, "how many of the configs in the resource allocation file should be used. -1 for all")
 	hybridAutoscalerCmd.MarkFlagRequired("usecount")
 
 	hybridAutoscalerCmd.Flags().Int64Var(&hpaCpuUPercentageThreshold, "hpat", 50, "what is the desired CPU utilization when using HPA.")
