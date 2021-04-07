@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -46,6 +47,12 @@ func NewHybridAutoscaler(endpoints, resources []string, hpaThreshold int64, pred
 				return nil, errors.Errorf("there must a replica configuration for each workload range.")
 			}
 		}
+
+		for _, pdr := range h.predefinedReplicas {
+			for key, value := range pdr.WorkloadRange {
+				pdr.WorkloadRange[strings.ReplaceAll(key, "-", "")] = value
+			}
+		}
 	}
 
 	return h, nil
@@ -80,7 +87,25 @@ func (h *Hybrid) GetName() string {
 
 // checkForConfigAvailability //TODO write how this works
 func (h *Hybrid) checkForConfigAvailability(happendWorkload workload.Workload) (map[string]int, error) {
-	// fmt.Println(happendWorkload.GetMapStringInt())
+	for i, pdr := range h.predefinedReplicas {
+		if i >= h.usecount {
+			continue
+		}
+		flag := true
+		for endpoint, requestCount := range happendWorkload.GetMapStringInt() {
+			endpoint = strings.ReplaceAll(endpoint, "-", "")
+			rcf := float32(requestCount)
+			log.Debugf("%f %f %f", pdr.WorkloadRange[endpoint].Low, rcf, pdr.WorkloadRange[endpoint].High)
+			if !(pdr.WorkloadRange[endpoint].Low <= rcf && pdr.WorkloadRange[endpoint].High >= rcf) {
+				flag = false
+				break
+			}
+		}
+		if flag {
+			fmt.Println("found by predefineds", pdr.Replicas)
+			return pdr.Replicas, nil
+		}
+	}
 	return nil, nil
 }
 
@@ -130,6 +155,7 @@ func (h *Hybrid) Evaluate(aggData *aggregators.AggregatedData) (map[string]int, 
 		// 	replicas[name] = int(math.Max(float64(replicas[name]), float64(getMaxPreviousReplicasForResource(name, h.previousReplicas))))
 		// }
 	} else {
+		takenApproach = "predefined"
 		replicas = suggestedReplicaCounts
 	}
 
