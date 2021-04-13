@@ -3,5 +3,5 @@ python extract_replica_infos.py train_23_test_24_1x workload_ranges_top_10_bin_2
 ```
 
 ```
-python generate-autoconfig-run-file.py workload_ranges_top_10_bin_25_no_replica_train_sorted.json train_23_test_24_1x > built-script.sh
+python generate-autoconfig-run-file.py workload_ranges_top_10_bin_25_no_replica_train_sorted.json train_23_test_24_1x > autoconfig-script.sh
 ```

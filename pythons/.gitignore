@@ -1,2 +1,3 @@
 *.json
 built-script.sh
+autoconfig-script.sh
