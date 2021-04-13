@@ -66,5 +66,6 @@ const KubeConfigPath = "KubeConfigPath"
 const DumpStartTime = "DumpStartTime"
 const DumpFinishTime = "DumpFinishTime"
 const DumpOutputPath = "DumpOutputPath"
+const DumpWithCPUInfo = "DumpWithCPUInfo"
 
 const InfluxDBCustomCRTFile = "InfluxDBCustomCRTFile"

@@ -2,6 +2,7 @@ package historyextractor
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"time"
 
@@ -45,6 +46,7 @@ func DumpHistory() {
 		WithUsageAggregator:      true,
 		WithDeploymentAggregator: true,
 	})
+	fmt.Println("viper.GetBool(constants.DumpWithCPUInfo)", viper.GetBool(constants.DumpWithCPUInfo))
 
 	if err != nil {
 		panic(err)

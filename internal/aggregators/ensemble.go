@@ -5,12 +5,14 @@ import (
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	deploymentinfoagg "github.com/vahidmostofi/acfg/internal/aggregators/deploymentInfoAggregator"
 	"github.com/vahidmostofi/acfg/internal/aggregators/endpointsagg"
 	"github.com/vahidmostofi/acfg/internal/aggregators/restime"
 	"github.com/vahidmostofi/acfg/internal/aggregators/ussageagg"
 	"github.com/vahidmostofi/acfg/internal/aggregators/utilizations"
 	"github.com/vahidmostofi/acfg/internal/aggregators/workloadagg"
+	"github.com/vahidmostofi/acfg/internal/constants"
 )
 
 type Ensemble struct {
@@ -39,9 +41,11 @@ func (e *Ensemble) DumpDataWithTimestamp(startTime, finishTime int64) ([]byte, e
 		panic(err)
 	}
 
-	d.UsageUtilization, err = e.Usage.GetAggregatedCPUUtilizationsWithTimestamped(startTime, finishTime)
-	if err != nil {
-		panic(err)
+	if viper.GetBool(constants.DumpWithCPUInfo) {
+		d.UsageUtilization, err = e.Usage.GetAggregatedCPUUtilizationsWithTimestamped(startTime, finishTime)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	d.DeploymentInfo, err = e.DeploymentInfo.GetAllDeploymentsInfoTimestamped(startTime, finishTime, make(map[string]interface{}))

@@ -409,7 +409,7 @@ func NewEnsembleAggregator(eaa EnsembleAggregatorArgs) (*aggregators.Ensemble, e
 		}
 	}
 
-	if eaa.WithUsageAggregator {
+	if eaa.WithUsageAggregator || true {
 		e.Usage, err = newResourceUsageAggregator()
 		if err != nil {
 			return nil, err
