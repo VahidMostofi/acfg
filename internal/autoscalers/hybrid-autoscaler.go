@@ -143,9 +143,11 @@ func (h *Hybrid) Evaluate(aggData *aggregators.AggregatedData) (map[string]int, 
 			currentReplicas := aggData.DeploymentInfos[name].Replica
 			meanCPUUtilization, err := cpuU.GetMean()
 			if err != nil {
-				panic(err) //TODO maybe we should try again.
+				replicas[name] = h.lastReplicas[name]
+				log.Info("lastReplicas are being use due an error in getting mean cpu utilzation for " + name + ".")
+			} else {
+				replicas[name] = int(math.Ceil(float64(currentReplicas) * (meanCPUUtilization / float64(h.hpaThreshold))))
 			}
-			replicas[name] = int(math.Ceil(float64(currentReplicas) * (meanCPUUtilization / float64(h.hpaThreshold))))
 		}
 		// this is commented, because we are using the same feature in custom-pod-autoscaler
 		// h.addReplicaInfoToPreviousReplicaInfos(replicas)
