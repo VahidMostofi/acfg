@@ -32,3 +32,12 @@ It needs these values to work:
     - Token
     - Bucket
     - Organization
+
+
+### HowTos?
+
+How to create the cluster?
+```
+k3d cluster create -p "9099:9099@loadbalancer"
+```
+

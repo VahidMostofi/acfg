@@ -3,13 +3,13 @@ import sys
 import json
 import math
 endpoints = ["login", "getbook", "editbook"]
-workload_range_conditions_file = sys.argv[1]
-
-workload_name=sys.argv[2]
 
 if len(sys.argv) < 3: 
-  print('you must pass 2 args')
-  os.exit(1)
+  print('you must pass 2 args, path of the json file and a prefix name of the workloads.')
+  sys.exit(1)
+
+workload_range_conditions_file = sys.argv[1]
+workload_name=sys.argv[2]
 
 with open(workload_range_conditions_file) as f:
   workload_ranges=json.load(f)
