@@ -50,7 +50,7 @@ for idx, item in enumerate(workload_ranges):
   
   
   command += envs + "\n"
-  command += "$PATH_TO_ACFG autoconfig --config $PATH_TO_CONFIG_FILE bnv2 --initialdelta 2000 --initcpu 500 --initmem 256 --maxcpuperreplica 500 --mincpu 500 --mindelta 500\n\n"
+  command += "$PATH_TO_ACFG autoconfig --config $PATH_TO_CONFIG_FILE bnv2 --initialdelta 1000 --initcpu 500 --initmem 256 --maxcpuperreplica 500 --mincpu 500 --mindelta 500\n\n"
   
 command += "\nset +a"
 
