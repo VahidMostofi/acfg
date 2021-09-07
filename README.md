@@ -3,6 +3,7 @@ Previous version of MOAT that works with Docker Swarm can be found [here](https:
 # ACFG Auto ConFiG
 The new version of automatic configuration of microservice applications.
 
+<<<<<<< HEAD
 
 ## Environment Variables
     
@@ -44,3 +45,6 @@ How to create the cluster?
 k3d cluster create -p "9099:9099@loadbalancer"
 ```
 
+=======
+## For the latest implemenation of MOAT and TRIM, pleas refer to `develop` branch of the same repository.
+>>>>>>> 3abc6969c93ede0af427665e797700aeca59d50c
