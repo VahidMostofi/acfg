@@ -45,12 +45,14 @@ for idx, item in enumerate(workload_ranges):
     envs += "\n"
     envs += "export ACFG_LOADGENERATOR_ARGS_ARGS"+endpoint.upper()+"PROB=\""+str(workload_range[endpoint]["high"]/total)+"\""
   envs += "\n"
-  envs += "export ACFG_LOADGENERATOR_ARGS_ARGSSLEEPDURATION=\"0.5\"\n"
+  envs += "export ACFG_LOADGENERATOR_ARGS_ARGSSLEEPDURATION=\"1.0\"\n"
   envs += "export ACFG_TESTNAME=predefined_configs_" + workload_name + '_' + sub_name + "\n"
   
   
   command += envs + "\n"
   command += "$PATH_TO_ACFG autoconfig --config $PATH_TO_CONFIG_FILE bnv2 --initialdelta 1000 --initcpu 500 --initmem 256 --maxcpuperreplica 500 --mincpu 500 --mindelta 500\n\n"
+  command += "$PATH_TO_ACFG autoconfig --config $PATH_TO_CONFIG_FILE hpa --initcpu 500 --initmem 256 --threshold 50\n\n"
+  command += "$PATH_TO_ACFG autoconfig --config $PATH_TO_CONFIG_FILE hpa --initcpu 500 --initmem 256 --threshold 30\n\n"
   
 command += "\nset +a"
 

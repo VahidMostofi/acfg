@@ -65,9 +65,9 @@ ConfigurationValidation:
 AutoConfigure:
   UseCache: true
   CacheDatabaseType: "fs"
-  FSDirectory: "/home/vahid/Desktop/acfg-results/cache/"
+  FSDirectory: "/home/vahidm/acfg-results/cache/"
 Results:
-  Directory: "/home/vahid/Desktop/acfg-results/$TARGETSYSTEM.NAME/$TargetSystem.Workload.Name/$STRATEGY.NAME/"
+  Directory: "/home/vahidm/acfg-results/$TARGETSYSTEM.NAME/$TargetSystem.Workload.Name/$STRATEGY.NAME/"
 
 WaitTimes:
   WaitAfterConfigIsDeployedSeconds: 10
@@ -80,9 +80,12 @@ LoadGenerator:
   Type: "k6"
   ScriptPath: "/home/vahid/Desktop/temp.js"
   Args:
-    args_vus: "300"
-    args_duration: "90s"
-    args_login_prob: "0.3"
-    args_getbook_prob: "0.1"
-    args_editbook_prob: "0.6"
-    args_sleep_duration: "1.0"
+    argsvus: "250"
+    argsduration: "120s"
+    argsloginprob: "0.3"
+    argsgetbookprob: "0.1"
+    argseditbookprob: "0.6"
+    argssleepduration: "0.5"
+  
+InfluxDBCustomCRTFile: "/home/vahidm/.self-signed-certs/influxdb-selfsigned.crt"
+KubeConfigPath: "/home/vahidm/.kube/config"
