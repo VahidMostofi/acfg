@@ -77,6 +77,7 @@ type AutoConfigManagerArgs struct {
 
 func NewAutoConfigManager(args *AutoConfigManagerArgs) (*AutoConfigManager, error) {
 	log.Debugf("%s: deploymentsToManage: %v", "NewAutoConfigManager", args.DeploymentsToManage)
+	log.Debugf("%+v", args.DeploymentsToManage)
 	c, err := clustermanager.NewK8ClusterManager(args.Namespace, args.DeploymentsToManage)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while creating kubernetes cluster clustermanager.")
@@ -129,7 +130,20 @@ func (a *AutoConfigManager) aggregateData(startTime, finishTime int64) (*aggrega
 	if err != nil {
 		return nil, errors.Wrap(err, "error while getting the CPU utilizations")
 	}
-	// Memory //TODO
+	ag.CPUPSIUtilizations, err = a.usageAggregator.GetAggregatedCPUPsiUtilizations(startTime, finishTime)
+	if err != nil {
+		return nil, errors.Wrap(err, "error while getting the CPU psi utilizations")
+	}
+
+	// Memory
+	ag.MemUtilizations, err = a.usageAggregator.GetAggregatedMemUtilizations(startTime, finishTime)
+	if err != nil {
+		return nil, errors.Wrap(err, "error while getting the mem utilizations")
+	}
+	ag.MemPsiUtilizations, err = a.usageAggregator.GetAggregatedMemPsiUtilizations(startTime, finishTime)
+	if err != nil {
+		return nil, errors.Wrap(err, "error while getting the mem psi utilizations")
+	}
 	//TODO DeploymentInfoAggregator
 
 	ag.DeploymentInfos = make(map[string]*deploymentinfoagg.DeploymentInfo)

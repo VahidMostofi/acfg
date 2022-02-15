@@ -34,7 +34,7 @@ func (k *K6LocalLoadGenerator) Start(workload *workload.Workload) error {
 		}
 	}
 
-	file, err := ioutil.TempFile("", "k6-script")
+	file, err := ioutil.TempFile("/home/evan/Documents/5th-Year/Research/load-gen", "k6-script.*.js")
 	if err != nil {
 		return errors.Wrap(err, "error while creating temp file for script of k6 local load generator")
 	}
@@ -56,15 +56,16 @@ func (k *K6LocalLoadGenerator) Start(workload *workload.Workload) error {
 	log.Warnf("K6LocalLoadGenerator: removing combined output: " + string(b))
 
 	cmd := exec.Command("docker", "run", "--network", "host", "-d", "--rm", "--name", containerName, "-v", file.Name()+":"+"/script.js", "loadimpact/k6", "run", "/script.js")
+	//cmd := exec.Command("docker", "run", "--network", "host", "-i", "--rm", "--name", containerName, "loadimpact/k6", "run", "-", "<", file.Name())
 	log.Debug("K6LocalLoadGenerator: ", cmd.String())
 	err = cmd.Run()
+	out, _ := cmd.CombinedOutput()
+	log.Debugf("K6LocalLoadGenerator: failure combined output: %s", string(out))
 	if err != nil {
 		out, _ := cmd.CombinedOutput()
 		log.Debugf("K6LocalLoadGenerator: failure combined output: %s", string(out))
 		return errors.Wrapf(err, "error while starting load generator %s", string(out))
 	}
-	out, _ := cmd.CombinedOutput()
-	log.Debugf("K6LocalLoadGenerator: running combined output: %s", string(out))
 	log.Debugf("K6LocalLoadGenerator: waiting for the load generator to start.")
 	for {
 		time.Sleep(1 * time.Second)

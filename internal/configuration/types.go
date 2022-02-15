@@ -27,6 +27,20 @@ func (c *Configuration) UpdateEqualWithNewCPUValue(newCPU int64, maxCPUPerReplic
 	c.CPU = &cpuPerReplica
 }
 
+func (c *Configuration) UpdateEqualWithNewCpuMemValue(newCPU int64, maxCPUPerReplica int64, newMem int64, maxMemPerReplica int64) {
+	cpuReplicaCount := math.Ceil(float64(newCPU) / float64(maxCPUPerReplica))
+	// TODO testing
+	memReplicaCount := 1.0
+	//memReplicaCount := math.Ceil(float64(newMem) / float64(maxMemPerReplica))
+	replicaCount := int64(math.Max(cpuReplicaCount, memReplicaCount))
+	cpuPerReplica := newCPU / replicaCount
+	//memPerReplica := newMem / replicaCount
+	memPerReplica := newMem
+	c.ReplicaCount = &replicaCount
+	c.CPU = &cpuPerReplica
+	c.Memory = &memPerReplica
+}
+
 func (c *Configuration) DeepCopy() *Configuration {
 	c2 := &Configuration{
 		ResourceType:      c.ResourceType,

@@ -9,7 +9,7 @@ import (
 	"github.com/vahidmostofi/acfg/internal/workload"
 )
 
-type CPUThreshold struct {
+type CPUPSIThreshold struct {
 	endpoints            []string
 	resources            []string
 	initialCPU           int64 // 1 CPU would be 1000
@@ -18,8 +18,8 @@ type CPUThreshold struct {
 	utilizationIndicator string // mean
 }
 
-func NewCPUThreshold(utilizationIndicator string, utilizationThreshold float64, endpoints []string, resources []string, initialCPU, initialMemory int64) (*CPUThreshold, error) {
-	c := &CPUThreshold{
+func NewCPUPSIThreshold(utilizationIndicator string, utilizationThreshold float64, endpoints []string, resources []string, initialCPU, initialMemory int64) (*CPUPSIThreshold, error) {
+	c := &CPUPSIThreshold{
 		endpoints:            endpoints,
 		resources:            resources,
 		initialCPU:           initialCPU,
@@ -31,15 +31,15 @@ func NewCPUThreshold(utilizationIndicator string, utilizationThreshold float64, 
 	return c, nil
 }
 
-func (ct *CPUThreshold) AddSLA(sla *sla.SLA) error {
+func (ct *CPUPSIThreshold) AddSLA(sla *sla.SLA) error {
 	return nil
 }
 
-func (ct *CPUThreshold) GetName() string {
-	return "CPUThreshold"
+func (ct *CPUPSIThreshold) GetName() string {
+	return "CPUPSIThreshold"
 }
 
-func (ct *CPUThreshold) GetInitialConfiguration(workload *workload.Workload, aggData *aggregators.AggregatedData) (map[string]*configuration.Configuration, error) {
+func (ct *CPUPSIThreshold) GetInitialConfiguration(workload *workload.Workload, aggData *aggregators.AggregatedData) (map[string]*configuration.Configuration, error) {
 	config := make(map[string]*configuration.Configuration)
 	for _, resource := range ct.resources {
 		config[resource] = &configuration.Configuration{}
@@ -52,30 +52,34 @@ func (ct *CPUThreshold) GetInitialConfiguration(workload *workload.Workload, agg
 	return config, nil
 }
 
-func (ct *CPUThreshold) ConfigureNextStep(currentConfig map[string]*configuration.Configuration, workload *workload.Workload, aggData *aggregators.AggregatedData) (map[string]*configuration.Configuration, map[string]interface{}, bool, error) {
+func (ct *CPUPSIThreshold) ConfigureNextStep(currentConfig map[string]*configuration.Configuration, workload *workload.Workload, aggData *aggregators.AggregatedData) (map[string]*configuration.Configuration, map[string]interface{}, bool, error) {
 	isChanged := false
-	var err error
+	//var err error
 	newConfig := make(map[string]*configuration.Configuration)
 
 	for _, resource := range ct.resources {
 		newConfig[resource] = currentConfig[resource].DeepCopy()
+		//isChanged = true
 
 		var whatToCompare float64
+		var err error
 		if ct.utilizationIndicator == "mean" {
-			whatToCompare, err = aggData.CPUUtilizations[resource].GetMean()
+			// TODO
+			whatToCompare, err = aggData.MemPsiUtilizations[resource].GetMean()
 			if err != nil {
-				return nil, make(map[string]interface{}), false, errors.Wrapf(err, "error while computing mean of CPU utilizations for %s.", resource)
+				return nil, make(map[string]interface{}), false, errors.Wrapf(err, "error while computing mean of mem psi utilizations for %s.", resource)
 			}
 		}
 		if whatToCompare > ct.utilizationThreshold {
-			newCount := int64Ptr(*newConfig[resource].ReplicaCount + 1)
-			//newConfig[resource].Memory = int64Ptr(*newConfig[resource].Memory + (1 * 1024))
-			log.Infof("%s.ConfigureNextStep() CPU utilization for %s is %f is more than %f changing replica from %d to %d", ct.GetName(), resource, whatToCompare, ct.utilizationThreshold, *newConfig[resource].ReplicaCount, *newCount)
-			//log.Infof("%s.ConfigureNextStep() CPU utilization for %s is %f is more than %f changing replica from %d to %d", ct.GetName(), resource, whatToCompare, ct.utilizationThreshold, *newConfig[resource].ReplicaCount, 0)
-			newConfig[resource].ReplicaCount = newCount
+			//newCount := int64Ptr(*newConfig[resource].ReplicaCount + 1)
+			log.Infof("%s.ConfigureNextStep() mem psi utilization for %s is %f is more than %f changing replica allocation... from %d to %d", ct.GetName(), resource, whatToCompare, ct.utilizationThreshold, *newConfig[resource].ReplicaCount, 0)
+			//newConfig[resource].ReplicaCount = newCount
+			//newConfig[resource].CPU = int64Ptr(1000)
+			newConfig[resource].Memory = int64Ptr(*newConfig[resource].Memory + (1 * 1024))
 			isChanged = true
 		} else {
 			log.Infof("%s.ConfigureNextStep() CPU utilization for %s is %f is less than %f not changing replica from %d", ct.GetName(), resource, whatToCompare, ct.utilizationThreshold, *newConfig[resource].ReplicaCount)
+			//log.Infof("%s.ConfigureNextStep() CPU utilization for %s is %f is less than %f not changing replica from %d", ct.GetName(), resource, whatToCompare, ct.utilizationThreshold, *newConfig[resource].ReplicaCount)
 		}
 	}
 

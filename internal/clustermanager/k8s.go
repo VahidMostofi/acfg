@@ -105,6 +105,7 @@ func (k *K8s) UpdateConfigurationsAndWait(ctx context.Context, config map[string
 		// update replica count
 		deploymentObj.Spec.Replicas = int32Ptr(int32(*c.ReplicaCount))
 		// update CPU and memory
+		// TODO Uh OH! this is a bold assumption
 		deploymentObj.Spec.Template.Spec.Containers[0].Resources = corev1.ResourceRequirements{
 			Limits: corev1.ResourceList{
 				"cpu":    resource.MustParse(c.GetCPUStringForK8s()),
@@ -115,6 +116,31 @@ func (k *K8s) UpdateConfigurationsAndWait(ctx context.Context, config map[string
 				"memory": resource.MustParse(c.GetMemoryStringForK8s()),
 			},
 		}
+		//deploymentObj.Spec.Template.Spec.Containers[1].Resources = corev1.ResourceRequirements{
+		//	Limits: corev1.ResourceList{
+		//		"cpu":    resource.MustParse(c.GetCPUStringForK8s()),
+		//		"memory": resource.MustParse(c.GetMemoryStringForK8s()),
+		//	},
+		//	Requests: corev1.ResourceList{
+		//		"cpu":    resource.MustParse(c.GetCPUStringForK8s()),
+		//		"memory": resource.MustParse(c.GetMemoryStringForK8s()),
+		//	},
+		//}
+		//
+
+		//for _, container := range deploymentObj.Spec.Template.Spec.Containers[1:] {
+		//	//configuration.Configuration{}
+		//	container.Resources = corev1.ResourceRequirements{
+		//		Limits: corev1.ResourceList{
+		//			"cpu":    resource.MustParse(c.GetCPUStringForK8s()),
+		//			"memory": resource.MustParse(c.GetMemoryStringForK8s()),
+		//		},
+		//		Requests: corev1.ResourceList{
+		//			"cpu":    resource.MustParse(c.GetCPUStringForK8s()),
+		//			"memory": resource.MustParse(c.GetMemoryStringForK8s()),
+		//		},
+		//	}
+		//}
 
 		//TODO patch environment variables
 

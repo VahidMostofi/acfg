@@ -33,6 +33,9 @@ type TimestampedResponseTime struct {
 type ResponseTimes []float64
 
 func (rts *ResponseTimes) String() string {
+	if rts.GetCount() == 0 {
+		return fmt.Sprintf("Empty response times is okay.")
+	}
 	m, err := rts.GetMean()
 	if err != nil {
 		panic(err)

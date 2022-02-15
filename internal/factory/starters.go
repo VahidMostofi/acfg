@@ -115,13 +115,13 @@ func newDeploymentAggregator() (deploymentinfoagg.DeploymentInfoAggregator, erro
 		return nil, err
 	}
 
-	di, err := deploymentinfoagg.NewDeploymentInfoAggregator(viper.GetString(constants.ResourceUsageAggregatorType), diagArgs, resources)
+	di, err := deploymentinfoagg.NewDeploymentInfoAggregator(viper.GetString(constants.EndpointsAggregatorType), diagArgs, resources)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error while creating ResourceUsageAggregator, these might be useful: \"%s, %s, %s, %s, %v",
-			viper.Get(constants.ResourceUsageAggregatorArgsURL),
+		return nil, errors.Wrapf(err, "error while creating DeploymentAggregator (EndpointsAggregator), these might be useful: \"%s, %s, %s, %s, %v",
+			viper.Get(constants.EndpointsAggregatorArgsURL),
 			"some token value",
-			viper.Get(constants.ResourceUsageAggregatorArgsOrganization),
-			viper.Get(constants.ResourceUsageAggregatorArgsBucket),
+			viper.Get(constants.EndpointsAggregatorArgsOrganization),
+			viper.Get(constants.EndpointsAggregatorArgsBucket),
 		)
 	}
 	return di, nil

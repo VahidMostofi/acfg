@@ -18,7 +18,7 @@ func init() {
 
 }
 
-func getEndpoints() []string {
+func GetEndpoints() []string {
 	t, err := factory.GetEndpointsFilters()
 	if err != nil {
 		panic(err)
@@ -30,7 +30,7 @@ func getEndpoints() []string {
 	return res
 }
 
-func getResources() []string {
+func GetResources() []string {
 	t, err := factory.GetResourceFilters()
 	if err != nil {
 		panic(err)

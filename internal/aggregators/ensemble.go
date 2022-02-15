@@ -31,7 +31,7 @@ func (e *Ensemble) DumpDataWithTimestamp(startTime, finishTime int64) ([]byte, e
 		StartTime        int64
 		FinishTime       int64
 		ResponseTimes    map[string][]restime.TimestampedResponseTime
-		UsageUtilization map[string][]utilizations.TimestampedUsage
+		UsageUtilization map[string][]utilizations.CPUTimestampedUsage
 		DeploymentInfo   map[string][]deploymentinfoagg.TimestampedDeploymentInfo
 	}
 
@@ -93,6 +93,11 @@ func (e *Ensemble) AggregateData(startTime, finishTime int64) (*AggregatedData, 
 		ag.CPUUtilizations, err = e.Usage.GetAggregatedCPUUtilizations(startTime, finishTime)
 		if err != nil {
 			return nil, errors.Wrap(err, "error while getting the CPU utilizations")
+		}
+
+		ag.MemUtilizations, err = e.Usage.GetAggregatedMemUtilizations(startTime, finishTime)
+		if err != nil {
+			return nil, errors.Wrap(err, "error while getting the mem utilizations")
 		}
 	}
 

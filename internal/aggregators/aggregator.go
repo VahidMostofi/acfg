@@ -9,13 +9,16 @@ import (
 )
 
 type AggregatedData struct {
-	ResponseTimes    map[string]*restime.ResponseTimes        `yaml:"responseTimes"`
-	CPUUtilizations  map[string]*utilizations.CPUUtilizations `yaml:"CPUUtilizations"`
-	SystemStructure  *sysstructureagg.SystemStructure         `yaml:"structure"`
-	HappenedWorkload *workload.Workload                       `yaml:"workload"`
-	StartTime        *int64                                   `yaml:"startTime"`
-	FinishTime       *int64                                   `yaml:"finishTime"`
-	DeploymentInfos  map[string]*deploymentinfoagg.DeploymentInfo
+	ResponseTimes      map[string]*restime.ResponseTimes           `yaml:"responseTimes"`
+	CPUUtilizations    map[string]*utilizations.CPUUtilizations    `yaml:"CPUUtilizations"`
+	CPUPSIUtilizations map[string]*utilizations.CPUPsiUtilizations `yaml:"CPUPsiUtilizations"`
+	MemUtilizations    map[string]*utilizations.MemUtilizations    `yaml:"MemUtilizations"`
+	MemPsiUtilizations map[string]*utilizations.MemPsiUtilizations `yaml:"MemPsiUtilizations"`
+	SystemStructure    *sysstructureagg.SystemStructure            `yaml:"structure"`
+	HappenedWorkload   *workload.Workload                          `yaml:"workload"`
+	StartTime          *int64                                      `yaml:"startTime"`
+	FinishTime         *int64                                      `yaml:"finishTime"`
+	DeploymentInfos    map[string]*deploymentinfoagg.DeploymentInfo
 }
 
 func (ag *AggregatedData) GetMinMaxResourcesBasedOnCPUUtil(endpoint string) (string, string) {
@@ -40,4 +43,70 @@ func (ag *AggregatedData) GetMinMaxResourcesBasedOnCPUUtil(endpoint string) (str
 		}
 	}
 	return minName, maxName
+}
+
+type ResourceType string
+
+const (
+	CPU ResourceType = "cpu"
+	Mem              = "mem"
+)
+
+type MinMaxResource struct {
+	ResourceType ResourceType
+	ResourceName string
+	Value        float64
+}
+
+func (ag *AggregatedData) GetMinMaxResourcesBasedOnPsi(endpoint string) (*MinMaxResource, *MinMaxResource) {
+	minResource := &MinMaxResource{
+		CPU,
+		"",
+		-1,
+	}
+	maxResource := &MinMaxResource{
+		CPU,
+		"",
+		float64(^int64(0) >> 1),
+	}
+	for _, resourceName := range ag.SystemStructure.GetEndpoints2Resources()[endpoint] {
+		cpuPSI, err := ag.CPUPSIUtilizations[resourceName].GetMean()
+		cpuResource := MinMaxResource{
+			CPU,
+			resourceName,
+			cpuPSI,
+		}
+		memPSI, err := ag.MemPsiUtilizations[resourceName].GetMean()
+		memResource := MinMaxResource{
+			Mem,
+			resourceName,
+			memPSI,
+		}
+		if err != nil {
+			panic(err)
+		}
+		if cpuPSI > memPSI {
+			//	CPU gt than mem
+			if cpuPSI > maxResource.Value {
+				//	new max value
+				maxResource = &cpuResource
+			}
+			if memPSI < minResource.Value {
+				//	new min value
+				minResource = &memResource
+			}
+		} else {
+			//	Mem gt than cpu
+			if memPSI > maxResource.Value {
+				//	new max value
+				maxResource = &memResource
+			}
+			if cpuPSI < minResource.Value {
+				//	new min value
+				minResource = &cpuResource
+			}
+		}
+	}
+
+	return minResource, maxResource
 }

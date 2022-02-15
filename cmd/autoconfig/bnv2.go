@@ -20,7 +20,7 @@ var bnv2Cmd = &cobra.Command{
 	Long:  "the bnv2 algorithm",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Do Stuff Here
-		autoConfigAgent, err := strategies.NewBNV2(initialDelta, getEndpoints(), getResources(), initialCPU, initialMemory, maxCPUPerReplica, minimumCPUValue, minimumDelta)
+		autoConfigAgent, err := strategies.NewBNV2(initialDelta, GetEndpoints(), GetResources(), initialCPU, initialMemory, maxCPUPerReplica, minimumCPUValue, minimumDelta)
 		if err != nil {
 			panic(err)
 		}

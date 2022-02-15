@@ -2,14 +2,16 @@ package utilizations
 
 import (
 	"context"
-	"strconv"
-	"strings"
-
 	"github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/montanaflynn/stats"
 	"github.com/pkg/errors"
+	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
 	"github.com/vahidmostofi/acfg/internal/dataaccess"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // CPUUtilizationAggregator uses some functionality to gather CPU utilization values based on some functionality
@@ -20,10 +22,11 @@ import (
 // available filters: POD_NAME_REGEX
 type CPUUtilizationAggregator interface {
 	GetCPUUtilizations(startTime, finishTime int64, filters map[string]interface{}) (*CPUUtilizations, error)
-	GetCPUUtilizationsWithTimestamp(startTime, finishTime int64, filters map[string]interface{}) ([]TimestampedUsage, error)
+	GetCPUPsiUtilizations(startTime, finishTime int64, filters map[string]interface{}) (*CPUPsiUtilizations, error)
+	GetCPUUtilizationsWithTimestamp(startTime, finishTime int64, filters map[string]interface{}) ([]CPUTimestampedUsage, error)
 }
 
-type TimestampedUsage struct {
+type CPUTimestampedUsage struct {
 	Timestamp      int64   `json:"ts"`
 	CPUUtilization float64 `json:"cpu"`
 }
@@ -68,13 +71,18 @@ func (rts *CPUUtilizations) GetPercentile(p float64) (float64, error) {
 	return p, nil
 }
 
-// InfluxDBRTA gets CPU utilizations from influxdb
+// InfluxDBCPUUA gets CPU utilizations from influxdb
 type InfluxDBCPUUA struct {
 	qAPI   api.QueryAPI
 	ctx    context.Context
 	cnF    context.CancelFunc
 	org    string
 	bucket string
+}
+
+func (i *InfluxDBCPUUA) GetCPUPsiUtilizations(startTime, finishTime int64, filters map[string]interface{}) (*CPUPsiUtilizations, error) {
+	log.Warning("InfluxDBCPUUA does not support CPU PSI")
+	return nil, nil
 }
 
 // NewInfluxDBCPUUA returns a new InfluxDBCPUUA
@@ -160,8 +168,8 @@ func (i *InfluxDBCPUUA) GetCPUUtilizations(startTime, finishTime int64, filters 
 	return &r, nil
 }
 
-// GetCPUUtilizations ....
-func (i *InfluxDBCPUUA) GetCPUUtilizationsWithTimestamp(startTime, finishTime int64, filters map[string]interface{}) ([]TimestampedUsage, error) {
+// GetCPUUtilizationsWithTimestamp ....
+func (i *InfluxDBCPUUA) GetCPUUtilizationsWithTimestamp(startTime, finishTime int64, filters map[string]interface{}) ([]CPUTimestampedUsage, error) {
 	if startTime >= finishTime {
 		return nil, errors.Errorf("for getting GetCPUUtilizations(), startTime must be less than finishTime")
 	}
@@ -173,10 +181,161 @@ func (i *InfluxDBCPUUA) GetCPUUtilizationsWithTimestamp(startTime, finishTime in
 		return nil, errors.Wrap(err, "error getting CPU utilizations from influxdb using:\n"+query)
 	}
 
-	r := make([]TimestampedUsage, len(times))
+	r := make([]CPUTimestampedUsage, len(times))
 	for i, _ := range times {
-		r[i] = TimestampedUsage{Timestamp: times[i].Unix(), CPUUtilization: values[i]}
+		r[i] = CPUTimestampedUsage{Timestamp: times[i].Unix(), CPUUtilization: values[i]}
 	}
 
 	return r, nil
+}
+
+// PromDBCPUUA gets CPU utilizations from prometheus
+type PromDBCPUUA struct {
+	api    v1.API
+	ctx    context.Context
+	cnF    context.CancelFunc
+	org    string
+	bucket string
+}
+
+func NewPromDBCPUUA(url, token, organization, bucket string) (*PromDBCPUUA, error) {
+	if len(strings.Trim(url, " ")) == 0 {
+		return nil, errors.Errorf("the argument %s cant be empty string", "url")
+	}
+	if len(strings.Trim(token, " ")) == 0 {
+		return nil, errors.Errorf("the argument %s cant be empty string", "token")
+	}
+	if len(strings.Trim(organization, " ")) == 0 {
+		return nil, errors.Errorf("the argument %s cant be empty string", "organization")
+	}
+	if len(strings.Trim(bucket, " ")) == 0 {
+		return nil, errors.Errorf("the argument %s cant be empty string", "bucket")
+	}
+	ctx, cnF := context.WithCancel(context.Background())
+	i := &PromDBCPUUA{ctx: ctx, cnF: cnF, org: organization, bucket: bucket}
+	i.api = dataaccess.GetNewPromClientAndQueryAPI(url)
+
+	return i, nil
+}
+
+// GetCPUUtilizations ....
+func (i *PromDBCPUUA) GetCPUUtilizations(startTime, finishTime int64, filters map[string]interface{}) (*CPUUtilizations, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	r := v1.Range{
+		Start: time.Unix(startTime, 0),
+		End:   time.Unix(finishTime, 0),
+		Step:  time.Second * 10,
+	}
+
+	query := `(sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{pod=~"$POD_NAME_REGEX"}) / sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_limits{pod=~"$POD_NAME_REGEX"})) * 100`
+	if podNameRegex, ok := filters[strings.ToLower("POD_NAME_REGEX")]; ok {
+		query = strings.Replace(query, "$POD_NAME_REGEX", podNameRegex.(string), -1)
+	} else {
+		panic(errors.Errorf("need POD_NAME_REGEX in filters to get CPU utilizations"))
+	}
+
+	log.Debug("getting CPU utilizations from prom with query:\n" + query)
+
+	result, warnings, err := i.api.QueryRange(ctx, query, r)
+	if err != nil {
+		log.Error("Error querying Prometheus: %v\n", err)
+	}
+	if len(warnings) > 0 {
+		log.Error("Warnings: %v\n", warnings)
+	}
+
+	resultMat, _ := result.(model.Matrix)
+
+	var resultSlice []float64
+	if len(resultMat) == 0 {
+		log.Error("No CPU ute values. assuming 100")
+		return (*CPUUtilizations)(&[]float64{100}), nil
+	}
+	for _, kv := range resultMat[0].Values {
+		resultSlice = append(resultSlice, float64(kv.Value))
+	}
+
+	return (*CPUUtilizations)(&resultSlice), nil
+}
+
+// GetCPUUtilizationsWithTimestamp ....
+func (i *PromDBCPUUA) GetCPUUtilizationsWithTimestamp(startTime, finishTime int64, filters map[string]interface{}) ([]CPUTimestampedUsage, error) {
+	// Not supported
+	log.Warning("Timestamping CPU PSI is not supported...")
+	return nil, nil
+}
+
+type CPUPsiUtilizations []float64
+
+// GetMean returns the average of cpu utilizations
+func (rts *CPUPsiUtilizations) GetMean() (float64, error) {
+	mean, err := stats.Mean([]float64(*rts))
+	if err != nil {
+		return 0, errors.Wrap(err, "computing mean failed on cpu psi utilizations")
+	}
+	return mean, nil
+}
+
+// GetMedian returns the median of cpu utilizations
+func (rts *CPUPsiUtilizations) GetMedian() (float64, error) {
+	med, err := stats.Mean([]float64(*rts))
+	if err != nil {
+		return 0, errors.Wrap(err, "computing median failed on cpu psi utilizations")
+	}
+	return med, nil
+}
+
+// GetStd returns the std of CPU utilizations
+func (rts *CPUPsiUtilizations) GetStd() (float64, error) {
+	std, err := stats.StandardDeviation([]float64(*rts))
+	if err != nil {
+		return 0, errors.Wrap(err, "computing std failed on cpu psi utilizations")
+	}
+	return std, nil
+}
+
+// GetPercentile returns the percentile of CPU utilizations
+func (rts *CPUPsiUtilizations) GetPercentile(p float64) (float64, error) {
+	p, err := stats.Percentile([]float64(*rts), p)
+	if err != nil {
+		return 0, errors.Wrap(err, "computing percentile failed on cpu psi utilizations")
+	}
+	return p, nil
+}
+
+func (i *PromDBCPUUA) GetCPUPsiUtilizations(startTime, finishTime int64, filters map[string]interface{}) (*CPUPsiUtilizations, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	r := v1.Range{
+		Start: time.Unix(startTime, 0),
+		End:   time.Unix(finishTime, 0),
+		Step:  time.Second * 10,
+	}
+
+	query := `cgroup_monitor_sc_monitored_cpu_psi{type="some",window="10s",job=~"$POD_NAME_REGEX"}`
+
+	if podNameRegex, ok := filters[strings.ToLower("POD_NAME_REGEX")]; ok {
+		query = strings.Replace(query, "$POD_NAME_REGEX", podNameRegex.(string), -1)
+	} else {
+		panic(errors.Errorf("need POD_NAME_REGEX in filters to get CPU psi utilizations"))
+	}
+
+	log.Debug("getting cpu psi utilizations from prom with query:\n" + query)
+
+	result, warnings, err := i.api.QueryRange(ctx, query, r)
+	if err != nil {
+		log.Error("Error querying Prometheus: %v\n", err)
+	}
+	if len(warnings) > 0 {
+		log.Error("Warnings: %v\n", warnings)
+	}
+	resultMat, _ := result.(model.Matrix)
+
+	var resultSlice []float64
+	for _, kv := range resultMat[0].Values {
+		resultSlice = append(resultSlice, float64(kv.Value))
+	}
+
+	return (*CPUPsiUtilizations)(&resultSlice), nil
 }

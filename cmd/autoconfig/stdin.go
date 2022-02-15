@@ -19,7 +19,7 @@ var stdinCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Do Stuff Here
 
-		autoConfigAgent, err := strategies.NewPythonRunner(pythonPath, scriptPath, getResources(), initialCPU, initialMemory)
+		autoConfigAgent, err := strategies.NewPythonRunner(pythonPath, scriptPath, GetResources(), initialCPU, initialMemory)
 		if err != nil {
 			panic(err)
 		}
