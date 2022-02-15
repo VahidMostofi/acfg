@@ -1,0 +1,31 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="CPU Threshold - Bookstore - Local" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="acfg" />
+    <working_directory value="$PROJECT_DIR$" />
+    <go_parameters value="-i" />
+    <parameters value="autoconfig --config &quot;$PROJECT_DIR$/sample-configs/bookstore.yml&quot; cput --indicator mean --initcpu 500 --initmem 256 --threshold 45" />
+    <envs>
+      <env name="export ACFG_LOADGENERATOR_ARGS_ARGSVUS" value="&quot;24&quot;" />
+      <env name="export ACFG_LOADGENERATOR_ARGS_ARGSGETBOOKPROB" value="&quot;0.33208333333333334&quot;" />
+      <env name="export ACFG_LOADGENERATOR_ARGS_ARGSLOGINPROB" value="&quot;0.33208333333333334&quot;" />
+      <env name="export ACFG_LOADGENERATOR_ARGS_ARGSEDITBOOKPROB" value="&quot;0.33208333333333334&quot;" />
+      <env name="export ACFG_LOADGENERATOR_ARGS_ARGSSLEEPDURATION" value="&quot;0.5&quot;" />
+      <env name="export ACFG_TESTNAME" value="predefined_configs_azure_app_cd05d7b444_3x_00" />
+    </envs>
+    <EXTENSION ID="net.ashald.envfile">
+      <option name="IS_ENABLED" value="false" />
+      <option name="IS_SUBST" value="false" />
+      <option name="IS_PATH_MACRO_SUPPORTED" value="false" />
+      <option name="IS_IGNORE_MISSING_FILES" value="false" />
+      <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
+      <ENTRIES>
+        <ENTRY IS_ENABLED="true" PARSER="runconfig" />
+      </ENTRIES>
+    </EXTENSION>
+    <kind value="PACKAGE" />
+    <package value="github.com/vahidmostofi/acfg" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$" />
+    <method v="2" />
+  </configuration>
+</component>
