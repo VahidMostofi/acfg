@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: endpoint-gateway
+spec:
+  selector:
+    matchLabels:
+      app: endpoint-gateway
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: endpoint-gateway
+    spec:
+      containers:
+        - name: nginx
+          image: vahidmostofi/nginx-gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9099 # if you change this, you need to change all 9099s in this file
+          env:
+            - name: TELEGRAF_SYSLOG_SERVER
+              value: "localhost:6514"
+            - name: PORT
+              value: "9099"
+            - name: PROXY_PASS_URL
+              value: "http://gateway:9080"
+          resources:
+            requests:
+              memory: "700Mi"
+              cpu: 1.0
+            limits:
+              memory: "700Mi"
+              cpu: 1.0
+        - name: telegraf-agent
+          image: vahidmostofi/telegraf-agent:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8125
+            - containerPort: 8092
+            - containerPort: 8094
+            - containerPort: 6514
+          env:
+            - name: INFLUXDB_URL
+              value: "http://influx.krul.ca"
+            - name: INFLUXDB_TOKEN
+              value: "rootpass"
+            - name: INFLUXDB_ORG
+              value: "evan"
+            - name: INFLUXDB_BUCKET
+              value: "endpoint-logs"
+            - name: NGINX_DEFAULT_STATS_URL
+              value: "http://localhost:9099/nginx_status"
+            - name: SYSLOG_SERVER_PORT
+              value: "6514"
+          resources:
+            requests:
+              memory: "700Mi"
+              cpu: 1.0
+            limits:
+              memory: "700Mi"
+              cpu: 1.0
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: endpoint-gateway
+spec:
+  selector:
+    app: endpoint-gateway
+  ports:
+    - port: 9099
+      nodePort: 30080
+      targetPort: 9099
+      protocol: TCP
+  type: NodePort
