@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+spec:
+  selector:
+    matchLabels:
+      app: auth
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: auth
+    spec:
+      shareProcessNamespace: true
+      containers:
+        - name: app
+          image: evankrul/bookstore_auth:in_mem.v.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3007
+#          readinessProbe:
+#            httpGet:
+#              path: /health
+#              port: 3007
+#            initialDelaySeconds: 5
+#            periodSeconds: 5
+#            successThreshold: 1
+#            timeoutSeconds: 5
+#            failureThreshold: 3
+          env:
+            - name: WorkerCount
+              value: "50"
+            - name: JWT_KEY
+              value: "someKeyIsGoodAndSomeOfThemBNoGEo1ioD!"
+            - name: JAEGER_SERVICE_NAME
+              value: "auth"
+            - name: PORT
+              value: "3007"
+            - name: MONGODB_URL
+              value: "mongodb://mongo:27017/bookstoreDB"
+            - name: JAEGER_COLLECTOR_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: jaeger-config
+                  key: JAEGER_COLLECTOR_HOST
+            - name: JAEGER_COLLECTOR_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: jaeger-config
+                  key: JAEGER_COLLECTOR_PORT
+            - name: JAEGER_AGENT_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: jaeger-config
+                  key: JAEGER_AGENT_HOST
+            - name: JAEGER_AGENT_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: jaeger-config
+                  key: JAEGER_AGENT_PORT
+            - name: SAMPELLING_PROB
+              valueFrom:
+                configMapKeyRef:
+                  name: jaeger-config
+                  key: SAMPELLING_PROB
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: 0.5
+            limits:
+              memory: "512Mi"
+              cpu: 0.5
+          volumeMounts:
+            - name: pid-flag-volume
+              mountPath: /etc/pid_flag
+        - name: cgroup-monitor-sc
+          image: evankrul/cgroup-sc:prom.v.1.2
+          ports:
+            - containerPort: 3027
+              name: metrics
+          securityContext:
+            capabilities:
+              add:
+                - SYS_PTRACE
+          env:
+            - name: PORT
+              value: "3027"
+          resources:
+            requests:
+              cpu: "15m"
+              memory: "40Mi"
+            limits:
+              cpu: "15m"
+              memory: "40Mi"
+          volumeMounts:
+            - name: pid-flag-volume
+              mountPath: /etc/pid_flag_sc
+      volumes:
+        - name: pid-flag-volume
+          configMap:
+            name: pid-flag-config-map-auth
+---
+#Cgroup config map
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: pid-flag-config-map-auth
+data:
+  pid_flag: auth
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth
+spec:
+  selector:
+    app: auth
+  ports:
+    - name: auth
+      port: 3007
+      targetPort: 3007
+    - name: metrics
+      port: 3027
+      targetPort: 3027
+  type: ClusterIP

@@ -1,0 +1,145 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+spec:
+  selector:
+    matchLabels:
+      app: gateway
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      terminationGracePeriodSeconds: 13
+      shareProcessNamespace: true
+      containers:
+        - name: app
+          image: evankrul/bookstore_gateway:in_mem.v.3
+#          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+#          readinessProbe:
+#            httpGet:
+#              path: /health
+#              port: 8080
+#            initialDelaySeconds: 5
+#            periodSeconds: 5
+#            successThreshold: 1
+#            timeoutSeconds: 5000
+#            failureThreshold: 3
+#          livenessProbe:
+#            httpGet:
+#              path: /health
+#              port: 8080
+#            initialDelaySeconds: 5
+#            periodSeconds: 5
+#            successThreshold: 1
+#            timeoutSeconds: 5000
+#            failureThreshold: 3000
+          # lifecycle:
+          #   preStop:
+          #     exec:
+          #       command:
+          #         - /bin/sh
+          #         - -c
+          #         - echo "Goodbye at" `date`
+          env:
+            - name: WorkerCount
+              value: "50"
+            - name: JWT_KEY
+              value: "someKeyIsGoodAndSomeOfThemBNoGEo1ioD!"
+            - name: JAEGER_SERVICE_NAME
+              value: "gateway"
+            - name: JAEGER_COLLECTOR_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: jaeger-config
+                  key: JAEGER_COLLECTOR_HOST
+            - name: JAEGER_COLLECTOR_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: jaeger-config
+                  key: JAEGER_COLLECTOR_PORT
+            - name: JAEGER_AGENT_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: jaeger-config
+                  key: JAEGER_AGENT_HOST
+            - name: JAEGER_AGENT_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: jaeger-config
+                  key: JAEGER_AGENT_PORT
+            - name: SAMPELLING_PROB
+              valueFrom:
+                configMapKeyRef:
+                  name: jaeger-config
+                  key: SAMPELLING_PROB
+          resources:
+            requests:
+#              memory: "3000Mi"
+              memory: "512Mi"
+              cpu: 0.5
+            limits:
+#              memory: "3000Mi"
+              memory: "512Mi"
+              cpu: 0.5
+          volumeMounts:
+            - name: pid-flag-volume
+              mountPath: /etc/pid_flag
+        - name: cgroup-monitor-sc
+          image: evankrul/cgroup-sc:prom.v.1.2
+          ports:
+            - containerPort: 8020
+              name: metrics
+          securityContext:
+            capabilities:
+              add:
+                - SYS_PTRACE
+          env:
+            - name: PORT
+              value: "8020"
+          resources:
+            requests:
+              cpu: "15m"
+              memory: "40Mi"
+            limits:
+              cpu: "15m"
+              memory: "40Mi"
+          volumeMounts:
+            - name: pid-flag-volume
+              mountPath: /etc/pid_flag_sc
+      volumes:
+        - name: pid-flag-volume
+          configMap:
+            name: pid-flag-config-map-gateway
+---
+#Cgroup config map
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: pid-flag-config-map-gateway
+data:
+  pid_flag: gateway
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway #this will be the Domain name
+spec:
+  selector:
+    app: gateway
+  ports:
+    - name: gateway-port
+      port: 9080
+      targetPort: 8080
+    - name: metrics
+      port: 8020
+      targetPort: 8020
+  type: LoadBalancer
