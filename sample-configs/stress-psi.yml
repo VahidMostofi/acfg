@@ -1,0 +1,91 @@
+VersionCode: "v0"
+EndpointsAggregator:
+  Type: "influxdb"
+  Args:
+    URL: "http://influx.krul.ca"          # EndpointsAggregator.Args.URL
+    Token: "rootpass"
+    Bucket: "metrics"
+    Organization: "evan"
+ResourceUsageAggregator:
+  Type: "prom_psi"
+  Args:
+    URL: "http://136.159.209.204:9090/"          # ResourceUsageAggregator.Args.URL
+    Token: "na"
+    Bucket: "na"
+    Organization: "na"
+WorkloadAggregator:
+  Type: "influxdb"
+  Args:
+    URL: "http://influx.krul.ca"          # WorkloadAggregator.Args.URL
+    Token: "rootpass"
+    Bucket: "metrics"
+    Organization: "evan"
+SystemStructureAggregator:
+  Type: "predefined"
+  Endpoints2Resources:
+    "stress-ng":
+      - "stress-ng"
+#    "get-book":
+#      - "gateway"
+#      - "books"
+#    "edit-book":
+#      - "gateway"
+#      - "books"
+EndpointsFilters:
+  "stress-ng":
+    "URI_REGEX": "stress*"
+    #    TODO fix URI
+    "HTTP_METHOD": "POST"
+#  "get-book":
+#    "URI_REGEX": "books*"
+#    "HTTP_METHOD": "GET"
+#    "URI_REGEX": "books*"
+#    "HTTP_METHOD": "PUT"
+ResourceFilters:
+  "stress-ng":
+#    TODO internal/aggregators/deploymentInfoAggregator/deploymentinfoagg.go:114 isnt using this regex
+    "POD_NAME_REGEX": "^stress-ng-*"
+#  "gateway":
+#    "POD_NAME_REGEX": "^gateway-*"
+#  "books":
+#    "POD_NAME_REGEX": "^books-*"
+TargetSystem:
+  Name: "stress-ng"
+  Namespace: "default"
+  TargetSystem:
+    DeploymentsToManage:
+      - "stress-ng"
+#      - "gateway"
+#      - "bookstore"
+  Workload:
+    Name: "stress-ng-workload"
+ConfigurationValidation:
+  TotalMemory: 80000
+  TotalCPU: 80
+AutoConfigure:
+  UseCache: false
+  CacheDatabaseType: "fs"
+  FSDirectory: "/home/evan/Documents/5th-Year/Research/acfg-results/cache"
+Results:
+  Directory: "/home/evan/Documents/5th-Year/Research/acfg-results/$TARGETSYSTEM.NAME/$TargetSystem.Workload.Name/$STRATEGY.NAME/"
+
+WaitTimes:
+  WaitAfterConfigIsDeployedSeconds: 10
+  LoadTestDurationSeconds: 90
+  WaitAfterLoadGeneratorIsDoneSeconds: 10
+
+SLAConditionsFile: "/home/evan/Documents/5th-Year/Research/acfg_psi/sample-configs/slas/stress-psi-custom.yaml"
+
+LoadGenerator:
+  Type: "k6"
+  ScriptPath: "/home/evan/Documents/5th-Year/Research/acfg_psi/sample-configs/load-gens/stress-psi-load.js"
+  Args:
+    argsvus: "1"
+    argsduration: "90s"
+    argsiterations: "1"
+#    argsloginprob: "0.3"
+#    argsgetbookprob: "0.1"
+#    argseditbookprob: "0.6"
+#    argssleepduration: "100000.0"
+
+KubeConfigPath: "/home/evan/.kube/config"

@@ -1,0 +1,91 @@
+VersionCode: "v0"
+EndpointsAggregator:
+  Type: "influxdb"
+  Args:
+    URL: "http://influx.krul.ca"          # EndpointsAggregator.Args.URL
+    Token: "rootpass"
+    Bucket: "metrics"
+    Organization: "evan"
+ResourceUsageAggregator:
+  Type: "prom_psi"
+  Args:
+    URL: "http://136.159.209.204:9090/"          # ResourceUsageAggregator.Args.URL
+    Token: "na"
+    Bucket: "na"
+    Organization: "na"
+WorkloadAggregator:
+  Type: "influxdb"
+  Args:
+    URL: "http://influx.krul.ca"          # WorkloadAggregator.Args.URL
+    Token: "rootpass"
+    Bucket: "metrics"
+    Organization: "evan"
+SystemStructureAggregator:
+  Type: "predefined"
+  Endpoints2Resources:
+    "login":
+      - "gateway"
+      - "auth"
+    "get-book":
+      - "gateway"
+      - "books"
+    "edit-book":
+      - "gateway"
+      - "books"
+EndpointsFilters:
+  "login":
+    "URI_REGEX": "login*"
+    "HTTP_METHOD": "POST"
+  "get-book":
+    "URI_REGEX": "books*"
+    "HTTP_METHOD": "GET"
+  "edit-book":
+    "URI_REGEX": "books*"
+    "HTTP_METHOD": "PUT"
+ResourceFilters:
+  "auth":
+    "POD_NAME_REGEX": "^auth.*"
+  "gateway":
+    "POD_NAME_REGEX": "^gateway.*"
+  "books":
+    "POD_NAME_REGEX": "^books.*"
+TargetSystem:
+  Name: "bookstore"
+  Namespace: "default"
+  TargetSystem:
+    DeploymentsToManage:
+      - "auth"
+      - "gateway"
+      - "bookstore"
+  Workload:
+    Name: "bookstore-in-mem-db"
+ConfigurationValidation:
+  TotalMemory: 80000
+  TotalCPU: 80
+AutoConfigure:
+  UseCache: false
+  CacheDatabaseType: "fs"
+  FSDirectory: "/home/evan/Documents/5th-Year/Research/acfg-results/cache"
+Results:
+  TestName: "bookstore_bnv2_psi_feb_14_5000_cpu_replicas_no_mem"
+  Directory: "/home/evan/Documents/5th-Year/Research/acfg-results/$TARGETSYSTEM.NAME/$TargetSystem.Workload.Name/$STRATEGY.NAME/"
+
+WaitTimes:
+  WaitAfterConfigIsDeployedSeconds: 10
+  LoadTestDurationSeconds: 30
+  WaitAfterLoadGeneratorIsDoneSeconds: 10
+
+SLAConditionsFile: "/home/evan/Documents/5th-Year/Research/acfg/sample-configs/slas/bookstore-all-250.yaml"
+
+LoadGenerator:
+  Type: "k6"
+  ScriptPath: "/home/evan/Documents/5th-Year/Research/acfg_psi/sample-configs/load-gens/bookstore-load.js"
+  Args:
+    argsvus: "150"
+    argsduration: "30s"
+    argsloginprob: "0.3"
+    argsgetbookprob: "0.1"
+    argseditbookprob: "0.6"
+    argssleepduration: "1.0"
+
+KubeConfigPath: "/home/evan/.kube/config"
