@@ -1,0 +1,204 @@
+---
+#Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stress-ng
+---
+#Stressor 1 Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stress-ng
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: stress-ng
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: stress-ng
+    spec:
+      terminationGracePeriodSeconds: 5
+      shareProcessNamespace: true
+      containers:
+        - name: stress-api
+          image: evankrul/stress-api:v1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 2335
+              name: stress
+          env:
+            - name: PORT
+              value: "2335"
+          resources:
+            requests:
+              cpu: 1
+              memory: "500Mi"
+            limits:
+              cpu: 1
+              memory: "500Mi"
+          volumeMounts:
+            - name: pid-flag-volume
+              mountPath: /etc/pid_flag
+        - name: cgroup-monitor-sc
+          image: evankrul/cgroup-sc:prom.v.1.2
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 2333
+              name: metrics
+          securityContext:
+            capabilities:
+              add:
+                - SYS_PTRACE
+          env:
+            - name: PORT
+              value: "2333"
+          resources:
+            requests:
+              cpu: 1
+              memory: "500Mi"
+            limits:
+              cpu: 1
+              memory: "500Mi"
+          volumeMounts:
+            - name: pid-flag-volume
+              mountPath: /etc/pid_flag_sc
+      volumes:
+        - name: pid-flag-volume
+          configMap:
+            name: pid-flag-config-map
+---
+#Cgroup config map
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: pid-flag-config-map
+data:
+  pid_flag: stess-ng-1
+---
+#Cgroup Monitor SC Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: cgroup-monitor-sc #this will be the Domain name
+  namespace: default
+spec:
+  selector:
+    app: stress-ng
+  ports:
+    - name: stress
+      port: 2335
+      targetPort: 2335
+    - name: metrics
+      port: 2333
+      targetPort: 2333
+  type: LoadBalancer
+# ---
+# ### Stressor 2
+# #Stressor 2 Deployment
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: stress-ng-2
+#   namespace: default
+# spec:
+#   selector:
+#     matchLabels:
+#       app: stress-ng-2
+#   replicas: 1
+#   strategy:
+#     type: RollingUpdate
+#     rollingUpdate:
+#       maxUnavailable: 0
+#   template:
+#     metadata:
+#       labels:
+#         app: stress-ng-2
+#     spec:
+#       terminationGracePeriodSeconds: 5
+#       shareProcessNamespace: true
+#       containers:
+#       - name: stress-ng-app-2
+#         image: alexeiled/stress-ng:0.11.24-ubuntu
+#         imagePullPolicy: IfNotPresent
+#         command: ["/bin/stress-ng"]
+#         args: ["--cpu", "1"]
+#         resources:
+#           requests:
+#             cpu: 1
+#             memory: "500Mi"
+#           limits:
+#             cpu: 1
+#             memory: "3Gi"
+#         volumeMounts:
+#             - name: pid-flag-volume-2
+#               mountPath: /etc/pid_flag
+#       - name: cgroup-monitor-sc-2
+#         image: evankrul/cgroup-sc:prom.v.1.2
+#         imagePullPolicy: Always
+#         ports:
+#         - containerPort: 2333
+#         # readinessProbe:
+#         #   httpGet:
+#         #     path: /health
+#         #     port: 2333
+#         #   initialDelaySeconds: 5
+#         #   periodSeconds: 5
+#         #   successThreshold: 1
+#         #   timeoutSeconds: 10
+#         #   failureThreshold: 3
+#         # livenessProbe:
+#         #   httpGet:
+#         #     path: /health
+#         #     port: 2333
+#         securityContext:
+#           capabilities:
+#             add:
+#             - SYS_PTRACE
+#         env:
+#         - name: PORT
+#           value: "2333"
+#         resources:
+#           requests:
+#             cpu: 1
+#             memory: "500Mi"
+#           limits:
+#             cpu: 1
+#             memory: "500Mi"
+#         volumeMounts:
+#             - name: pid-flag-volume-2
+#               mountPath: /etc/pid_flag_sc
+#       volumes:
+#       - name: pid-flag-volume-2
+#         configMap:
+#           name: pid-flag-config-map-2
+# ---
+# #Cgroup config map
+# kind: ConfigMap
+# apiVersion: v1
+# metadata:
+#   name: pid-flag-config-map-2
+# data:
+#   pid_flag: stess-ng-2
+# ---
+# #Cgroup Monitor SC Service
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: cgroup-monitor-sc-2 #this will be the Domain name
+#   namespace: default
+# spec:
+#   selector:
+#     app: stress-ng-2
+#   ports:
+#     - name: metrics
+#       port: 2334
+#       targetPort: 2333
+#   type: LoadBalancer
